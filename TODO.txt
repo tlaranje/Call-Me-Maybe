@@ -1,0 +1,172 @@
+# ============================
+# 1. Preparação do Ambiente
+# ============================
+
+- Instalar o uv (gestor de ambientes da 42).
+  Explicação: vais precisar dele para criar o ambiente virtual e instalar dependências.
+
+- Criar ambiente virtual com uv venv.
+  Explicação: isola as dependências do projeto.
+
+- Instalar numpy e pydantic com uv pip install.
+  Explicação: são obrigatórios segundo o PDF.
+
+- Criar estrutura base do projeto:
+    src/
+    llm_sdk/
+    data/input/
+    data/output/ (não incluir no git)
+    README.md
+    pyproject.toml
+    uv.lock
+  Explicação: esta é a estrutura que o avaliador espera encontrar.
+
+
+# ============================
+# 2. Adicionar o llm_sdk
+# ============================
+
+- Copiar a pasta llm_sdk fornecida pela 42 para a raiz do projeto.
+  Explicação: contém o Small_LLM_Model, tokenizer e vocabulary.json.
+
+- Confirmar que llm_sdk está ao lado da pasta src/.
+  Explicação: o import só funciona assim.
+
+
+# ============================
+# 3. Ler e Validar Inputs
+# ============================
+
+- Ler function_definitions.json.
+  Explicação: contém as funções disponíveis, parâmetros e tipos.
+
+- Ler function_calling_tests.json.
+  Explicação: contém os prompts que tens de transformar em chamadas de função.
+
+- Implementar validação de JSON (try/except).
+  Explicação: o PDF exige que o programa nunca crash e trate erros “gracefully”.
+
+- Validar que os ficheiros existem.
+  Explicação: se não existirem, tens de mostrar erro claro ao utilizador.
+
+
+# ============================
+# 4. Criar Modelos Pydantic
+# ============================
+
+- Criar classe FunctionDefinition.
+- Criar classe ParameterDefinition.
+- Criar classe ReturnTypeDefinition.
+- Criar classe FunctionSet (lista de funções).
+  Explicação: o PDF exige que todas as classes usem Pydantic para validação.
+
+
+# ============================
+# 5. Preparar Interação com o LLM
+# ============================
+
+- Carregar Small_LLM_Model do llm_sdk.
+- Usar encode() para converter texto em tokens.
+- Usar get_logits_from_input_ids() para obter logits.
+- Carregar vocabulary.json com get_path_to_vocabulary_json().
+  Explicação: vais precisar disto para fazer constrained decoding.
+
+
+# ============================
+# 6. Implementar Constrained Decoding
+# ============================
+
+- Criar loop de geração token a token.
+- Em cada passo:
+    - Identificar tokens válidos para manter JSON correto.
+    - Bloquear tokens inválidos (logits = -inf).
+- Garantir:
+    - JSON sempre válido.
+    - Estrutura fixa: {"name": ..., "parameters": {...}}
+    - Tipos corretos (string, number, boolean).
+  Explicação: é a parte mais importante do projeto; o PDF diz que não podes confiar no modelo.
+
+
+# ============================
+# 7. Escolher a Função Correta
+# ============================
+
+- Passar o prompt ao modelo.
+- Usar o modelo para decidir qual função chamar.
+- Extrair argumentos usando o LLM + constrained decoding.
+  Explicação: não podes usar heurísticas; a escolha deve vir do modelo.
+
+
+# ============================
+# 8. Gerar Output Final
+# ============================
+
+- Criar lista de objetos JSON:
+    {
+      "prompt": "...",
+      "name": "...",
+      "parameters": {...}
+    }
+- Guardar em data/output/function_calling_results.json.
+- Validar:
+    - JSON válido
+    - Sem chaves extra
+    - Tipos corretos
+  Explicação: o avaliador vai abrir este ficheiro e verificar tudo.
+
+
+# ============================
+# 9. Criar Makefile
+# ============================
+
+- Criar regras obrigatórias:
+    install
+    run
+    debug
+    clean
+    lint
+    lint-strict (opcional)
+  Explicação: o PDF exige estas regras com comandos específicos.
+
+
+# ============================
+# 10. Criar README.md
+# ============================
+
+- Primeira linha em itálico com logins.
+- Descrição do projeto.
+- Instruções de instalação e execução.
+- Recursos usados.
+- Explicação do algoritmo de constrained decoding.
+- Decisões de design.
+- Performance.
+- Desafios.
+- Estratégia de testes.
+- Exemplos de uso.
+  Explicação: o README é parte obrigatória e muito importante.
+
+
+# ============================
+# 11. Testar o Projeto
+# ============================
+
+- Testar com inputs variados:
+    - strings vazias
+    - números grandes
+    - caracteres especiais
+    - tipos errados
+    - prompts ambíguos
+- Garantir que nunca crasha.
+- Garantir que JSON é sempre válido.
+  Explicação: o PDF exige robustez total.
+
+
+# ============================
+# 12. Preparar para Peer Review
+# ============================
+
+- Confirmar que tudo funciona com:
+    uv sync
+    uv run python -m src
+- Estar pronto para fazer pequenas alterações durante a defesa.
+  Explicação: o avaliador pode pedir uma pequena modificação.
