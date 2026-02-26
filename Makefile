@@ -10,48 +10,42 @@
 #                                                                              #
 # **************************************************************************** #
 
-# === Paths ===
-SGOINFRE    := /home/$(USER)/sgoinfre/Call_Me_Maybe
-VENV        := $(SGOINFRE)/.venv
-UV_CACHE    := $(SGOINFRE)/.uv_cache
-HF_CACHE    := $(SGOINFRE)/.llm
+# === PATHS ===
+SGOINFRE		:= /home/$(USER)/sgoinfre/Call-Me-Maybe
+HF_CACHE		:=$(SGOINFRE)/.llm
+UV_CACHE		:=$(SGOINFRE)/.uv_cache
+VENV			:=$(SGOINFRE)/.venv
 
-# === Main script ===
-MAIN        := srcs/main.py
+# VARIABLES
+DEFAULT_INPUT	:=	data/input/function_calling_tests.json
+DEFAULT_OUTPUT	:=	data/output/function_calling_result.json
 
-# === Commands ===
-P3          := python3
-RM          := rm -rf
-FIND        := find
+# === COMMANDS ===
+RM				:= rm -rf
+FIND			:= find
 
-# === Build targets ===
+# === EXPORTS ===
+export UV_PROJECT_ENVIRONMENT=$(VENV)
+export UV_CACHE_DIR=$(UV_CACHE)
+export HF_HOME=$(HF_CACHE)
+export TRANSFORMERS_CACHE=$(HF_CACHE)
+export HF_TOKEN="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"
+
+# === BUILD TARGETS ===
 install:
-	clear
-	@echo ">> Creating virtual environment... <<"
-	@echo ""
-	@mkdir -p $(VENV) $(UV_CACHE) $(HF_CACHE)
-	@uv venv $(VENV)
-	@UV_PROJECT_ENVIRONMENT=$(VENV) UV_CACHE_DIR=$(UV_CACHE) HF_HOME=$(HF_CACHE) TRANSFORMERS_CACHE=$(HF_CACHE) uv sync
-	@UV_PROJECT_ENVIRONMENT=$(VENV) UV_CACHE_DIR=$(UV_CACHE) HF_HOME=$(HF_CACHE) TRANSFORMERS_CACHE=$(HF_CACHE) uv pip install flake8 mypy
+	@clear && uv sync
 
 run:
-	clear
-	@export UV_PROJECT_ENVIRONMENT=$(VENV) && \
-	export UV_CACHE_DIR=$(UV_CACHE) && \
-	export HF_HOME=$(HF_CACHE) && \
-	export TRANSFORMERS_CACHE=$(HF_CACHE) && \
-	uv run python $(MAIN)
+	@clear && export HF_TOKEN="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" && \
+	uv run python -m src --input $(DEFAULT_INPUT) --output $(DEFAULT_OUTPUT) \
+	$(ARGS)
 
 debug:
-	@export UV_PROJECT_ENVIRONMENT=$(VENV) && \
-	export UV_CACHE_DIR=$(UV_CACHE) && \
-	export HF_HOME=$(HF_CACHE) && \
-	export TRANSFORMERS_CACHE=$(HF_CACHE) && \
-	uv run python -m pdb $(MAIN)
+	@clear && uv run python -m pdb $(MAIN)
 
 clean:
-	clear
-	@echo ">> Cleaning project cache... <<"
+	@clear
+	@echo "Cleaning project cache..."
 	@$(FIND) . -type d -name "__pycache__" -exec $(RM) {} +
 	@$(FIND) . -type d -name ".mypy_cache" -exec $(RM) {} +
 	@$(FIND) . -type d -name ".pytest_cache" -exec $(RM) {} +
@@ -59,16 +53,18 @@ clean:
 	@$(FIND) . -type f -name "*.pyo" -delete
 
 fclean: clean
-	@echo ">> Removing sgoinfre environment... <<"
+	@echo "Removing sgoinfre environment..."
 	@$(RM) $(VENV)
 	@$(RM) $(UV_CACHE)
 	@$(RM) $(HF_CACHE)
 
 lint:
-	@export UV_PROJECT_ENVIRONMENT=$(VENV) && uv run flake8 .
-	@export UV_PROJECT_ENVIRONMENT=$(VENV) && uv run mypy .
+	@clear
+	@uv run flake8 .
+	@uv run mypy .
 
 lint-strict:
+	@clear
 	@flake8 .
 	@mypy . --strict
 

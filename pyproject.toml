@@ -1,17 +1,29 @@
 [project]
-name = "llm-sdk"
+name = "Call-Me-Maybe"
 version = "0.1.0"
-description = "LLM SDK for local model inference"
-requires-python = ">=3.10"
+description = "tlaranje's call_me_maybe project (school 42)"
+readme = "README.md"
+requires-python = ">=3.14"
 dependencies = [
-    "torch>=2.0.0",
-    "transformers>=4.40.0",
-    "huggingface-hub>=0.20.0",
+    "fire>=0.7.1",
+    "flake8>=7.3.0",
+    "mypy>=1.19.1",
+    "numpy>=2.4.1",
+    "pydantic>=2.12.5",
+    "pytest>=9.0.2",
+    "torch>=2.10.0",
+    "transformers>=5.0.0",
+    "accelerate>=1.10.0"
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+[[tool.mypy.overrides]]
+module = "llm_sdk.*"
+ignore_errors = true
 
-[tool.hatch.build.targets.wheel]
-packages = ["llm_sdk"]
+[[tool.mypy.overrides]]
+module = "src.llm_utils"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "uvcache.*"
+ignore_errors = true
