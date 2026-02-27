@@ -11,10 +11,17 @@
 # **************************************************************************** #
 
 # === PATHS ===
-SGOINFRE		:= /home/$(USER)/sgoinfre/Call-Me-Maybe
-HF_CACHE		:=$(SGOINFRE)/.llm
-UV_CACHE		:=$(SGOINFRE)/.uv_cache
-VENV			:=$(SGOINFRE)/.venv
+SGOINFRE_BASE := /home/$(USER)/sgoinfre
+
+ifeq ($(wildcard $(SGOINFRE_BASE)),)
+	SGOINFRE := $(CURDIR)
+else
+	SGOINFRE := $(SGOINFRE_BASE)/Call-Me-Maybe
+endif
+
+HF_CACHE := $(SGOINFRE)/.llm
+UV_CACHE := $(SGOINFRE)/.uv_cache
+VENV     := $(SGOINFRE)/.venv
 
 # VARIABLES
 DEFAULT_INPUT	:=	data/input/function_calling_tests.json
@@ -33,6 +40,7 @@ export HF_TOKEN="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"
 
 # === BUILD TARGETS ===
 install:
+	@pip install uv --break-system-packages
 	@clear && uv sync
 
 run:
@@ -51,8 +59,6 @@ clean:
 	@$(FIND) . -type d -name ".pytest_cache" -exec $(RM) {} +
 	@$(FIND) . -type f -name "*.pyc" -delete
 	@$(FIND) . -type f -name "*.pyo" -delete
-
-fclean: clean
 	@echo "Removing sgoinfre environment..."
 	@$(RM) $(VENV)
 	@$(RM) $(UV_CACHE)

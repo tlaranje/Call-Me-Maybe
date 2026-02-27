@@ -1,12 +1,20 @@
 # from llm_sdk import Small_LLM_Model
-from src.parse_args import get_args
+from src.get_args import get_args
+from src.json_utils import load_json_file
+import json
+import sys
 
 
 def main():
-    args_dict: dict[str, str] = get_args()
-    print(f"Input: {args_dict['Input']}")
-    print(f"Input: {args_dict['Output']}")
-    print(f"Input: {args_dict['Input']}")
+    try:
+        args_dict = get_args()
+        data = load_json_file(args_dict['Input'])
+
+        print("Output:")
+        print(json.dumps(data, indent=4, ensure_ascii=False))
+    except Exception as e:
+        print(f"{e}")
+        sys.exit(1)
     """ model = Small_LLM_Model()
     print("\n\n")
 
