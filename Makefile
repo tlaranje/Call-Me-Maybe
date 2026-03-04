@@ -31,22 +31,18 @@ DEFAULT_OUTPUT	:=	data/output/function_calling_result.json
 RM				:= rm -rf
 FIND			:= find
 
-# === EXPORTS ===
-export UV_PROJECT_ENVIRONMENT=$(VENV)
-export UV_CACHE_DIR=$(UV_CACHE)
-export HF_HOME=$(HF_CACHE)
-export TRANSFORMERS_CACHE=$(HF_CACHE)
-export HF_TOKEN="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"
-
 # === BUILD TARGETS ===
 install:
-	@pip install uv --break-system-packages
 	@clear && uv sync
-
 run:
-	@clear && export HF_TOKEN="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" && \
-	uv run python -m src --input $(DEFAULT_INPUT) --output $(DEFAULT_OUTPUT) \
-	$(ARGS)
+	@clear && \
+	export UV_PROJECT_ENVIRONMENT=$(VENV) && \
+	export UV_CACHE_DIR=$(UV_CACHE) && \
+	export HF_HOME=$(HF_CACHE) && \
+	export TRANSFORMERS_CACHE=$(HF_CACHE) && \
+	uv run python -m src \
+	--input $(DEFAULT_INPUT) \
+	--output $(DEFAULT_OUTPUT) $(ARGS)
 
 debug:
 	@clear && uv run python -m pdb $(MAIN)
