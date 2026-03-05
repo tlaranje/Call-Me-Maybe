@@ -10,42 +10,26 @@
 #                                                                              #
 # **************************************************************************** #
 
-# === PATHS ===
-SGOINFRE_BASE := /home/$(USER)/sgoinfre
-
-ifeq ($(wildcard $(SGOINFRE_BASE)),)
-	SGOINFRE := $(CURDIR)
-else
-	SGOINFRE := $(SGOINFRE_BASE)/Call-Me-Maybe
-endif
-
-HF_CACHE := $(SGOINFRE)/.llm
-UV_CACHE := $(SGOINFRE)/.uv_cache
-VENV     := $(SGOINFRE)/.venv
-
-# VARIABLES
-DEFAULT_INPUT	:=	data/input/function_calling_tests.json
-DEFAULT_OUTPUT	:=	data/output/function_calling_result.json
+# === VARIABLES ===
+SETUP_ENV       := . ./setup_env.sh &&
+DEFAULT_INPUT   := data/input/function_calling_tests.json
+DEFAULT_OUTPUT  := data/output/function_calling_result.json
 
 # === COMMANDS ===
-RM				:= rm -rf
-FIND			:= find
+RM              := rm -rf
+FIND            := find
 
 # === BUILD TARGETS ===
 install:
-	@clear && uv sync
+	@clear && $(SETUP_ENV) uv sync
+
 run:
-	@clear && \
-	export UV_PROJECT_ENVIRONMENT=$(VENV) && \
-	export UV_CACHE_DIR=$(UV_CACHE) && \
-	export HF_HOME=$(HF_CACHE) && \
-	export TRANSFORMERS_CACHE=$(HF_CACHE) && \
-	uv run python -m src \
-	--input $(DEFAULT_INPUT) \
-	--output $(DEFAULT_OUTPUT) $(ARGS)
+	@clear && $(SETUP_ENV) uv run python -m src \
+	    --input $(DEFAULT_INPUT) \
+	    --output $(DEFAULT_OUTPUT) $(ARGS)
 
 debug:
-	@clear && uv run python -m pdb $(MAIN)
+	@clear && $(SETUP_ENV) uv run python -m pdb $(MAIN)
 
 clean:
 	@clear
@@ -55,19 +39,16 @@ clean:
 	@$(FIND) . -type d -name ".pytest_cache" -exec $(RM) {} +
 	@$(FIND) . -type f -name "*.pyc" -delete
 	@$(FIND) . -type f -name "*.pyo" -delete
-	@echo "Removing sgoinfre environment..."
-	@$(RM) $(VENV)
-	@$(RM) $(UV_CACHE)
-	@$(RM) $(HF_CACHE)
+	@echo "Removing sgoinfre cache..."
+	@bash -c '. ./setup_env.sh && \
+	rm -rf $$SGOINFRE/.venv $$SGOINFRE/.uv_cache $$SGOINFRE/.llm'
 
 lint:
-	@clear
-	@uv run flake8 .
-	@uv run mypy .
+	@clear && $(SETUP_ENV) uv run flake8 .
+	@$(SETUP_ENV) uv run mypy .
 
 lint-strict:
-	@clear
-	@flake8 .
-	@mypy . --strict
+	@clear && $(SETUP_ENV) flake8 .
+	@$(SETUP_ENV) mypy . --strict
 
-.PHONY: install run debug clean fclean lint
+.PHONY: install run debug clean lint lint-strict
