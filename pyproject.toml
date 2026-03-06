@@ -17,6 +17,9 @@ dependencies = [
     "pydantic>=2.12.5"
 ]
 
+[tool.mypy]
+python_executable = ".venv/bin/python"
+
 [[tool.mypy.overrides]]
 module = "llm_sdk.*"
 ignore_errors = true

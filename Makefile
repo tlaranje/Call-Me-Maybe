@@ -45,10 +45,14 @@ clean:
 
 lint:
 	@clear && $(SETUP_ENV) uv run flake8 .
-	@$(SETUP_ENV) uv run mypy .
+	@$(SETUP_ENV) uv run mypy . --warn-return-any \
+	    --warn-unused-ignores \
+	    --ignore-missing-imports \
+	    --disallow-untyped-defs \
+	    --check-untyped-defs
 
 lint-strict:
-	@clear && $(SETUP_ENV) flake8 .
-	@$(SETUP_ENV) mypy . --strict
+	@clear && $(SETUP_ENV) uv run flake8 .
+	@$(SETUP_ENV) uv run mypy . --strict
 
 .PHONY: install run debug clean lint lint-strict

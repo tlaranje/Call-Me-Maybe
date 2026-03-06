@@ -1,10 +1,5 @@
 import argparse
 
-""" TODO
-Add a description to the parser
-Add help descrition to each argument
-"""
-
 
 def get_args() -> dict[str, str]:
     parser = argparse.ArgumentParser(description='')
@@ -26,7 +21,7 @@ def get_args() -> dict[str, str]:
     )
     args = parser.parse_args()
     return {
-        "Input": args.input,
-        "Output": args.output,
-        "Functions Definitions": args.functions_definitions
+        "input": args.input,
+        "output": args.output,
+        "functions": args.functions_definitions
     }
