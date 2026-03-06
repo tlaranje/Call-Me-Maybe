@@ -1,79 +1,154 @@
-4. Criar função para ler ficheiros JSON usando with
-    Criar src/utils.py com:
-        load_json_file(path: str)
-        usar with open(...)
-        tratar erros: ficheiro não existe, JSON inválido
+================================================================
+TODO - call me maybe (Introduction to Function Calling in LLMs)
+================================================================
 
-5. Criar o ficheiro principal src/__main__.py
-    Este ficheiro será executado com:
-        uv run python -m src
-    Dentro dele:
-        Chamar get_args()
-        Ler ficheiros JSON com load_json_file()
-        Validar com Pydantic
-        Carregar o modelo Small_LLM_Model
-        Carregar o vocabulário JSON do modelo
-        Preparar estrutura para constrained decoding
-        Processar cada prompt
-        Gerar {prompt, name, parameters}
-        Guardar tudo no ficheiro de output usando with open(...)
+PROJECT SETUP
+-------------
+[X] Create virtual environment with uv
+[X] Install numpy and pydantic via uv
+[X] Copy llm_sdk/ package into project root (same level as src/)
+[X] Create pyproject.toml and uv.lock
+[X] Create .gitignore (exclude Python artifacts)
+[X] Run uv sync to verify setup works
 
-6. Implementar o algoritmo de escolha da função
-    Enviar prompt ao LLM
-    Usar constrained decoding para garantir JSON válido
-    O modelo deve escolher:
-        "name": "fn_xxx"
-        "parameters": {...}
+PROJECT STRUCTURE
+-----------------
+[ ] Create src/ directory with implementation files
+[ ] Create data/input/ directory
+[ ] Place function_calling_tests.json in data/input/
+[ ] Place functions_definition.json in data/input/
+[ ] Create data/output/ directory (do NOT commit to git)
+[ ] Create Makefile with required rules
 
-7. Implementar o constrained decoding
-    Passos:
-        Tokenizar o prompt
-        Gerar logits token a token
-    Em cada passo:
-        Determinar tokens válidos para manter JSON correto
-        Bloquear tokens inválidos (logits = -inf)
-        Continuar até JSON completo
-        Validar JSON final
+MAKEFILE RULES
+--------------
+[ ] install  - install dependencies (pip/uv/pipx)
+[ ] run      - execute main script via uv run python -m src
+[ ] debug    - run main script with pdb debugger
+[ ] clean    - remove __pycache__, .mypy_cache, etc.
+[ ] lint     - run: flake8 . && mypy . --warn-return-any
+               --warn-unused-ignores --ignore-missing-imports
+               --disallow-untyped-defs --check-untyped-defs
+[ ] lint-strict (optional) - run: flake8 . && mypy . --strict
 
-8. Criar o Makefile
-    Regras obrigatórias:
-        install
-        run
-        debug
-        clean
-        lint
-        lint-strict (opcional)
+CODE QUALITY REQUIREMENTS
+--------------------------
+[ ] Python 3.10 or later
+[ ] Follow flake8 coding standard
+[ ] Add type hints to all function parameters, return types, variables
+[ ] Pass mypy without errors
+[ ] Add docstrings to all functions and classes (PEP 257 / Google or NumPy style)
+[ ] Use try-except blocks for error handling (no unexpected crashes)
+[ ] Use context managers for file/connection resources
+[ ] All classes must use pydantic for validation
 
-9. Criar README.md
-    Deve incluir:
-        Descrição do projeto
-        Instruções de execução
-        Explicação do algoritmo
-        Decisões de design
-        Performance
-        Testes
-        Exemplos de uso
-        Como usaste IA
+FORBIDDEN / RESTRICTED
+-----------------------
+[ ] DO NOT use dspy, pytorch, huggingface, transformers, outlines, or similar
+[ ] DO NOT use private methods or attributes from llm_sdk
+[ ] DO NOT hardcode solutions based on example inputs
+[ ] DO NOT include output/ directory in git repository
+[ ] DO NOT rely on model spontaneously producing correct JSON from a prompt
 
-10. Criar testes (opcional mas recomendado)
-    Usar pytest ou unittest
-    Testar:
-        JSON inválido
-        Ficheiros em falta
-        Funções com vários parâmetros
-        Strings especiais
-        Números grandes
+MANDATORY IMPLEMENTATION
+-------------------------
+[ ] Parse --functions_definition argument (default: data/input/functions_definition.json)
+[ ] Parse --input argument (default: data/input/function_calling_tests.json)
+[ ] Parse --output argument (default: data/output/function_calls.json)
 
-11. Validar tudo
-    Correr uv run python -m src
-    Verificar se cria data/output/function_calling_result.json
-    Confirmar que o JSON é válido
-    Confirmar que segue o schema
+[ ] Load and validate functions_definition.json
+    [ ] Handle missing file gracefully
+    [ ] Handle invalid JSON gracefully
+    [ ] Parse: name, description, parameters (name+type), returns
 
-12. Preparar para defesa
-    Saber explicar:
-        Constrained decoding
-        Como escolhes a função
-        Como bloqueias tokens inválidos
-        Como validas JSON
-        Como geres erros
+[ ] Load and validate function_calling_tests.json
+    [ ] Handle missing file gracefully
+    [ ] Handle invalid JSON gracefully
+    [ ] Parse array of {"prompt": "..."} objects
+
+[ ] Implement LLM interaction using llm_sdk (Small_LLM_Model)
+    [ ] Use get_logits_from_input_ids(input_ids)
+    [ ] Use get_path_to_vocabulary_json()
+    [ ] Use encode(text)
+    [ ] Use decode(token_ids) as needed
+
+[ ] Implement generation pipeline
+    [ ] Prompt -> Tokenization -> Input IDs -> LLM -> Logits -> Token Selection
+    [ ] Autoregressive loop (token by token until complete)
+
+[ ] Implement CONSTRAINED DECODING (core requirement)
+    [ ] Load vocabulary JSON to map token IDs <-> string representations
+    [ ] At each generation step:
+        [ ] Get logits from LLM
+        [ ] Identify valid next tokens (maintain JSON structure + schema)
+        [ ] Set invalid token logits to -infinity
+        [ ] Select only from valid tokens
+    [ ] Enforce schema: correct function name, correct argument names and types
+    [ ] Guarantee 100% valid, parseable JSON output
+
+[ ] Use LLM to select the correct function (not heuristics!)
+
+[ ] Produce output file: data/output/function_calling_results.json
+    [ ] Array of objects, each with:
+        [ ] "prompt"     (string) - original natural language request
+        [ ] "name"       (string) - function name to call
+        [ ] "parameters" (object) - all required arguments with correct types
+    [ ] Valid JSON (no trailing commas, no comments)
+    [ ] Keys and types match function_definitions.json exactly
+    [ ] No extra keys or prose in output
+    [ ] All required arguments present
+    [ ] Argument types match definition (number, string, boolean, etc.)
+
+PERFORMANCE TARGETS
+--------------------
+[ ] 90%+ correct function selection and argument extraction
+[ ] 100% valid JSON output (parseable, schema-compliant)
+[ ] Process all prompts in under 5 minutes on standard hardware
+[ ] Graceful handling of malformed inputs, missing files, edge cases
+
+TESTING
+--------
+[ ] Test with provided example prompts (add, greet, reverse_string)
+[ ] Test edge cases:
+    [ ] Empty strings
+    [ ] Large numbers
+    [ ] Special characters
+    [ ] Wrong/ambiguous types
+    [ ] Ambiguous prompts
+    [ ] Functions with multiple parameters
+[ ] Write unit tests using pytest or unittest (not graded but recommended)
+[ ] Verify output JSON structure and content after each run
+
+README.md REQUIREMENTS
+-----------------------
+[ ] First line italicized: "This project has been created as part of the 42 curriculum by <login>"
+[ ] Description section (goal + overview)
+[ ] Instructions section (installation, compilation, execution)
+[ ] Resources section (references + how AI was used and for which tasks)
+[ ] Algorithm explanation - describe constrained decoding approach in detail
+[ ] Design decisions - explain key implementation choices
+[ ] Performance analysis - accuracy, speed, reliability
+[ ] Challenges faced - difficulties and solutions
+[ ] Testing strategy - how you validated the implementation
+[ ] Example usage - clear examples of running the program
+[ ] Written in English
+
+GIT / SUBMISSION
+-----------------
+[ ] src/ directory committed
+[ ] pyproject.toml and uv.lock committed
+[ ] llm_sdk/ directory committed
+[ ] data/input/ with test files committed
+[ ] README.md committed
+[ ] .gitignore committed (excludes output/, __pycache__, .mypy_cache, etc.)
+[ ] output/ directory NOT committed
+[ ] Double-check all file names before submitting
+
+EVALUATION PREP
+----------------
+[ ] Be ready to explain the constrained decoding algorithm in detail
+[ ] Be ready to justify every design decision
+[ ] Be prepared for a small live code modification during evaluation
+[ ] Ensure you fully understand every line of your implementation
+[ ] Do a final peer review before submission
+================================================================
