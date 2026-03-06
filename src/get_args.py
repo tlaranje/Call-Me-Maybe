@@ -12,7 +12,7 @@ def get_args() -> dict[str, str]:
     parser.add_argument(
         '--output',
         help="",
-        default='data/output/function_calling_result.json'
+        default='data/output/function_calling_results.json'
     )
     parser.add_argument(
         "--functions_definitions",
