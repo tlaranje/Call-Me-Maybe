@@ -15,7 +15,7 @@ def get_args() -> dict[str, str]:
         default='data/output/function_calling_results.json'
     )
     parser.add_argument(
-        "--functions_definitions",
+        "--functions_definition",
         help="",
         default='data/input/functions_definition.json'
     )
