@@ -14,8 +14,8 @@ CODE QUALITY FIXES
     [X] Add return type hint -> None to main()
     [X] Fix: prompts are being joined into one string -- each prompt must
         be processed individually in a loop
-    [ ] Load functions_definition.json and validate against FunctionDefinition model
-    [ ] Validate each prompt item against Prompt pydantic model
+    [X] Load functions_definition.json and validate against FunctionDefinition model
+    [X] Validate each prompt item against Prompt pydantic model
     [ ] Write results to output file (currently nothing is written)
 
 [ ] src/json_utils.py
@@ -116,3 +116,27 @@ EVALUATION may include a live code modification:
   - Be ready to explain constrained decoding step by step
   - Peer review before submitting
 ================================================================
+
+# O que tens disponível no llm_sdk:
+
+model.encode(text)                        # texto -> tensor de input_ids
+model.decode(ids)                         # ids -> texto
+model.get_logits_from_input_ids(ids)      # lista de ids -> logits do próximo token
+model.get_path_to_vocab_file()            # caminho para o vocab.json
+```
+
+O loop que tens de implementar é:
+```
+1. Carrega vocab.json  →  { token_id: token_string }
+2. Constrói o prompt (funções + user prompt)
+3. Encode o prompt  →  input_ids (lista de ints)
+4. Loop token a token:
+   a. get_logits_from_input_ids(input_ids)  →  lista de floats
+   b. Para cada token_id no vocab, verifica se o token é válido
+      dado o JSON gerado até agora
+   c. Tokens inválidos  →  logits[token_id] = float('-inf')
+   d. next_token = argmax(logits)
+   e. input_ids.append(next_token)
+   f. Para quando o JSON estiver completo (fecha com "}")
+5. Decode os tokens gerados  →  JSON string
+6. json.loads(json_string)  →  {"name": ..., "parameters": {...}}
