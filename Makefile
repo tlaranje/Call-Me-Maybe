@@ -24,12 +24,16 @@ install:
 	@clear && $(SETUP_ENV) uv sync
 
 run:
-	@clear && $(SETUP_ENV) uv run python -m src \
-	    --input $(DEFAULT_INPUT) \
-	    --output $(DEFAULT_OUTPUT) $(ARGS)
+	@clear && \
+	$(SETUP_ENV) uv run python -m src \
+	--input $(DEFAULT_INPUT) \
+	--output $(DEFAULT_OUTPUT) $(ARGS)
 
 debug:
-	@clear && $(SETUP_ENV) uv run python -m pdb $(MAIN)
+	@clear && \
+	$(SETUP_ENV) uv run python -m pdb -m src \
+	--input $(DEFAULT_INPUT) \
+	--output $(DEFAULT_OUTPUT) $(ARGS)
 
 clean:
 	@clear

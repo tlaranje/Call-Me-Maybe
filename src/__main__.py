@@ -21,8 +21,12 @@ def main() -> None:
 
         functions = data['functions']
         vocab = load_vocab(model)
-
-        partial_json = '{"name":"fn_greet",'
+        """
+        "name": {
+        "type": "string"
+        }
+        """
+        partial_json = '{"name":"fn_add_numbers","parameters":'
         lst_ints = get_valid_token_ids(vocab, partial_json, functions)
         for token_id in lst_ints:
             print(repr(token_id), repr(vocab[token_id]))
