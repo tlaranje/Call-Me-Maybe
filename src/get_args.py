@@ -23,5 +23,5 @@ def get_args() -> dict[str, str]:
     return {
         "input": args.input,
         "output": args.output,
-        "functions": args.functions_definitions
+        "functions": args.functions_definition
     }

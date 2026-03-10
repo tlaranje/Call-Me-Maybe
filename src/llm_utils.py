@@ -32,9 +32,39 @@ def get_state(partial_json: str, functions: list) -> str:
 
 
 def get_valid_token_ids(
-    vocab: dict[int, str], partial_json: str, functions: list
+    vocab: dict[int, str], json: str, functions: list
 ) -> list[int]:
     res: list[int] = []
+    name = json.split('{"name":"')[1]
+    fn_names = [f.name for f in functions]
+
+    for token_id, token_str in vocab.items():
+        token_str = token_str.strip()
+
+        if json == "":
+            if token_str == "{":
+                res.append(token_id)
+        elif json == "{":
+            if '"name"'.startswith(token_str):
+                res.append(token_id)
+        elif '{"name"' in json and ':' not in json:
+            if token_str == ':':
+                res.append(token_id)
+        elif '{"name":' in json and '"' not in json.split(':')[1]:
+            if token_str == '"':
+                res.append(token_id)
+        elif '{"name":"' in json and '"' not in json.split('{"name":"', 1)[1]:
+            if any(name == f for f in fn_names):
+                if token_str == '"':
+                    res.append(token_id)
+            elif any(f.startswith(name + token_str) for f in fn_names):
+                res.append(token_id)
+        elif '{"name":"' + name in json:
+            if token_str == ',':
+                res.append(token_id)
+        elif '"parameters"' not in json:
+            
+
     return res
 
 
