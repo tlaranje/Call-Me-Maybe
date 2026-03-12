@@ -6,22 +6,24 @@ import json
 class State(Enum):
     # '{"name":"fn_add_numbers","parameters":{"a":2.0,"b":3.0}}'
 
-    START = 0          # {
-    NAME_KEY = 1       # "name"
-    NAME_COLON = 2     # :
-    NAME_OPEN = 3     # "
-    NAME_VALUE = 4     # fn_add_numbers
-    NAME_CLOSE = 5     # "
-    COMMA = 6          # ,
-    PARAMS_KEY = 7     # "parameters"
-    PARAMS_COLON = 8   # :
-    PARAMS_OPEN = 9    # {
-    PARAM_NAME = 10     # "a"
-    PARAM_COLON = 11   # :
-    PARAM_VALUE = 12   # 2.0
-    PARAM_COMMA = 13   # , if have more that one parameter
-    PARAMS_CLOSE = 14  # }
-    END = 15           # }
+    START = 0              # {
+    NAME_KEY = 1           # "name"
+    NAME_COLON = 2         # :
+    NAME_OPEN = 3          # "
+    NAME_VALUE = 4         # fn_add_numbers
+    NAME_CLOSE = 5         # "
+    COMMA = 6              # ,
+    PARAMS_KEY = 7         # "parameters"
+    PARAMS_COLON = 8       # :
+    PARAMS_OPEN = 9        # {
+    PARAM_NAME_OPEN = 10   # "
+    PARAM_NAME = 11        # a
+    PARAM_NAME_CLOSE = 12  # "
+    PARAM_COLON = 13       # :
+    PARAM_VALUE = 14       # 2.0
+    PARAM_COMMA = 15       # ,
+    PARAMS_CLOSE = 16      # }
+    END = 17               # }
 
 
 def build_prompt(functions: list, prompt: str) -> str:
@@ -71,41 +73,116 @@ def check_params(js: str, fn_params: dict) -> tuple[list[str], list[str]]:
 
 
 def get_state(js: str, functions: list) -> str:
-    f_name = js.split('{"name":"')[1].split('"')[0] if '{"name":"' in js else ""
+    js = '{"name":"fn_add_numbers","parameters":{"a":2.0'
+    f_name = js.split('{"name":"')[1].split('"')[0]
     f_names = [f.name for f in functions]
-    js = '{"name":"fn_add_numbers'
+    fn = next((f for f in functions if f.name == f_name), None)
+
+    def is_param_comma(js: str) -> bool:
+        if not fn or '"parameters":{' not in js:
+            return False
+        part_2 = js.split('"parameters":')[1]
+        filled_p, remaining_p = check_params(part_2, fn.parameters)
+        return len(filled_p) > 0 and len(remaining_p) > 0
+
+    def is_params_close(js: str) -> bool:
+        if not fn or '"parameters":{' not in js:
+            return False
+        part_2 = js.split('"parameters":')[1]
+        filled_p, remaining_p = check_params(part_2, fn.parameters)
+        return len(remaining_p) == 0
 
     states = {
         State.START: lambda js: js == '',
+
         State.NAME_KEY: lambda js: js != '' and '{"name'.startswith(js),
+
         State.NAME_COLON: lambda js: (
-            '{"name"' in js and ':' not in js and "parameters" not in js
+            js.startswith('{"name"') and not js.startswith('{"name":')
         ),
-        State.NAME_OPEN: lambda js: '{"name":' in js and '{"name":"' not in js,
+
+        State.NAME_OPEN: lambda js: (
+            js.startswith('{"name":') and not js.startswith('{"name":"')
+        ),
+
         State.NAME_VALUE: lambda js: (
-            '{"name":"' in js and ',' not in js and f_name not in f_names
-            and any(f.startswith(js.split('{"name":"')[1]) for f in f_names)
+            '{"name":"' in js
+            and f_name not in f_names
+            and any(f.startswith(f_name) for f in f_names)
         ),
-        State.NAME_CLOSE: lambda js: f_name in f_names,
+
+        State.NAME_CLOSE: lambda js: (
+            '{"name":"' in js
+            and f_name in f_names
+            and not (',' in js)
+            and not js.endswith('"')
+        ),
+
         State.COMMA: lambda js: (
-            '{"name":"' + f_name + '",' in js and js.endswith(',')
+            f_name in f_names
+            and js == '{"name":"' + f_name + '"'
         ),
+
         State.PARAMS_KEY: lambda js: (
-            ',' in js and '"parameters"'.startswith(js.split(',')[1])
+            '{"name":"' + f_name + '",' in js
+            and '"parameters'.startswith(
+                js.split('{"name":"' + f_name + '",')[1]
+            )
         ),
+
         State.PARAMS_COLON: lambda js: (
             '"parameters"' in js
-            and ':' not in js.split('"parameters"')[1]
+            and not js.split('"parameters"')[1].startswith(':')
         ),
+
         State.PARAMS_OPEN: lambda js: (
-            '"parameters":' in js and '{' not in js.split('"parameters":')[1]
+            '"parameters":' in js
+            and not js.split('"parameters":')[1].startswith('{')
         ),
+
+        State.PARAM_NAME_OPEN: lambda js: (
+            '"parameters":{' in js
+            and js.split('"parameters":{')[1] == ''
+        ),
+
+        State.PARAM_NAME: lambda js: (
+            '"parameters":{"' in js
+            and any(
+                p.startswith(js.split('"parameters":{"')[1])
+                for p in fn.parameters
+            )
+        ),
+
+        State.PARAM_COLON: lambda js: (
+            any(
+                js.split('"parameters":{')[1] == f'"{p}"'
+                for p in fn.parameters
+            )
+        ),
+
+        State.PARAM_VALUE: lambda js: (
+            '"parameters":{' in js
+            and ':' in js.split('"parameters":{')[1]
+            and not js.split('"parameters":{')[1].endswith(':')
+        ),
+
+        State.PARAM_NAME_CLOSE: lambda js: (
+            fn is not None and '"parameters":{"' in js
+            and not js.split('"parameters":{')[1].endswith(':')
+            and any(
+                js.split('"parameters":{"')[1].split('"')[0] == p
+                for p in fn.parameters
+            )
+        ),
+
+        State.PARAM_COMMA: is_param_comma,
+
+        State.PARAMS_CLOSE: is_params_close,
     }
 
     for state, condition in states.items():
         if condition(js):
             return state
-
     return State.END
     """js_full = '{"name":"fn_add_numbers","parameters":{"a":2.0,"b":3.0}}'
 
