@@ -9,12 +9,14 @@ class State(Enum):
     START = 0          # {
     NAME_KEY = 1       # "name"
     NAME_COLON = 2     # :
-    NAME_VALUE = 4     # "fn_add_number"
+    NAME_OPEN = 3     # "
+    NAME_VALUE = 4     # fn_add_numbers
+    NAME_CLOSE = 5     # "
     COMMA = 6          # ,
     PARAMS_KEY = 7     # "parameters"
     PARAMS_COLON = 8   # :
     PARAMS_OPEN = 9    # {
-    PARAM_NAME = 10    # "a"
+    PARAM_NAME = 10     # "a"
     PARAM_COLON = 11   # :
     PARAM_VALUE = 12   # 2.0
     PARAM_COMMA = 13   # , if have more that one parameter
@@ -69,54 +71,54 @@ def check_params(js: str, fn_params: dict) -> tuple[list[str], list[str]]:
 
 
 def get_state(js: str, functions: list) -> str:
-    f_name = js.split('{"name":')[1].split(',')[0] if '{"name":' in js else ""
-    f_names = [f'"{f.name}"' for f in functions]
-
-    def is_params_key(js):
-        generated = js.split(",")[1] if "," in js else ""
-        return ('"parameters"'.startswith(generated))
-
-    def is_params_colon(js: str) -> bool:
-        gen = js.split(",")[1] if "," in js else ""
-        return '"parameters"'.startswith(gen) and '"parameters"' not in js
-
-    def is_params_open(js: str) -> bool:
-        generated = js.split(",")[1] if "," in js else ""
-        return (
-            '"parameters"'.startswith(generated) and '"parameters"' not in js
-        )
+    f_name = js.split('{"name":"')[1].split('"')[0] if '{"name":"' in js else ""
+    f_names = [f.name for f in functions]
+    js = '{"name":"fn_add_numbers'
 
     states = {
-        State.START: lambda js: js in '{',
-        State.NAME_KEY: lambda js: js != "" and '{"name"'.startswith(js),
-        State.NAME_COLON: lambda js: js.endswith(':'),
+        State.START: lambda js: js == '',
+        State.NAME_KEY: lambda js: js != '' and '{"name'.startswith(js),
+        State.NAME_COLON: lambda js: (
+            '{"name"' in js and ':' not in js and "parameters" not in js
+        ),
+        State.NAME_OPEN: lambda js: '{"name":' in js and '{"name":"' not in js,
         State.NAME_VALUE: lambda js: (
-            '{"name":' in js and '"' not in js.split('{"name":')[1]
+            '{"name":"' in js and ',' not in js and f_name not in f_names
+            and any(f.startswith(js.split('{"name":"')[1]) for f in f_names)
         ),
+        State.NAME_CLOSE: lambda js: f_name in f_names,
         State.COMMA: lambda js: (
-            '{"name":' + f_name + ',' in js and js.endswith(',')
+            '{"name":"' + f_name + '",' in js and js.endswith(',')
         ),
-        # State.PARAMS_KEY: is_params_key
+        State.PARAMS_KEY: lambda js: (
+            ',' in js and '"parameters"'.startswith(js.split(',')[1])
+        ),
+        State.PARAMS_COLON: lambda js: (
+            '"parameters"' in js
+            and ':' not in js.split('"parameters"')[1]
+        ),
+        State.PARAMS_OPEN: lambda js: (
+            '"parameters":' in js and '{' not in js.split('"parameters":')[1]
+        ),
     }
-    """ for state, condition in states.items():
+
+    for state, condition in states.items():
         if condition(js):
-            return state """
-    js_full = '{"name":"fn_add_numbers","parameters":{"a":2.0,"b":3.0}}'
+            return state
+
+    return State.END
+    """js_full = '{"name":"fn_add_numbers","parameters":{"a":2.0,"b":3.0}}'
 
     for i in range(1, len(js_full) + 1):
         js = js_full[:i]
         matched = next((s for s, cond in states.items() if cond(js)), None)
-        print(f"{matched!s:<20} → {js}")
+        print(f"{matched!s:<20} → {js}") """
 
 
 """
     part_1 = js.split('"parameters"')[1] if '"parameters"' in js else ""
     part_2 = js.split('"parameters":')[1] if '"parameters"' in js else ""
     generated = js.split(",")[1] if "," in js else ""
-
-    if '"parameters"'.startswith(generated + next(iter(generated), "")):
-        if '"parameters"' not in js:
-            return State.PARAMS_KEY
 
     if '"parameters"' in js and ":" not in part_1:
         return State.PARAMS_COLON

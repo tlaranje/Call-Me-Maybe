@@ -21,14 +21,9 @@ def main() -> None:
 
         functions = data['functions']
         # vocab = load_vocab(model)
-        """
-        "name": {
-        "type": "string"
-        }
-        """
         # js = '{"name":"fn_add_numbers","parameters":{"a":2.0,"b":3.0}}'
-        js = '{"name":"fn_add_numbers","'
-        get_state(js, functions)
+        js = '{"name":'
+        print(get_state(js, functions))
 
         """ lst_ints = get_valid_token_ids(vocab, js, functions)
         for token_id in lst_ints:
