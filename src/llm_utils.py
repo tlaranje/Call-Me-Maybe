@@ -73,17 +73,23 @@ def check_params(js: str, fn_params: dict) -> tuple[list[str], list[str]]:
 
 
 def get_state(js: str, functions: list) -> str:
-    js = '{"name":"fn_add_numbers","parameters":{"a":2.0'
+    js = '{"name":"fn_add_numbers","parameters":{"a":'
+    print(js)
     f_name = js.split('{"name":"')[1].split('"')[0]
     f_names = [f.name for f in functions]
     fn = next((f for f in functions if f.name == f_name), None)
 
     def is_param_comma(js: str) -> bool:
-        if not fn or '"parameters":{' not in js:
+        jss = js.split('parameters":')[1]
+        filled_p, remaining_p = check_params(jss, fn.parameters)
+        if not fn or '"parameters":{' not in js or len(remaining_p) != 1:
             return False
-        part_2 = js.split('"parameters":')[1]
-        filled_p, remaining_p = check_params(part_2, fn.parameters)
-        return len(filled_p) > 0 and len(remaining_p) > 0
+        inner = js.split('"parameters":{')[1]
+        return (
+            ':' in inner
+            and inner.count('.') == 1 or inner.count('"') == 2
+            and not inner.endswith('.') or inner.endswith('"')
+        )
 
     def is_params_close(js: str) -> bool:
         if not fn or '"parameters":{' not in js:
@@ -169,6 +175,7 @@ def get_state(js: str, functions: list) -> str:
         State.PARAM_NAME_CLOSE: lambda js: (
             fn is not None and '"parameters":{"' in js
             and not js.split('"parameters":{')[1].endswith(':')
+            and ':' not in js.split('"parameters":{')[1]
             and any(
                 js.split('"parameters":{"')[1].split('"')[0] == p
                 for p in fn.parameters
@@ -184,12 +191,6 @@ def get_state(js: str, functions: list) -> str:
         if condition(js):
             return state
     return State.END
-    """js_full = '{"name":"fn_add_numbers","parameters":{"a":2.0,"b":3.0}}'
-
-    for i in range(1, len(js_full) + 1):
-        js = js_full[:i]
-        matched = next((s for s, cond in states.items() if cond(js)), None)
-        print(f"{matched!s:<20} → {js}") """
 
 
 """
