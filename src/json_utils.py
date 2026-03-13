@@ -2,7 +2,7 @@ from typing import Any
 import json
 
 
-def load_json_file(path: str) -> Any:
+def load_json(path: str) -> Any:
     try:
         with open(path, "r") as fd:
             return json.load(fd)

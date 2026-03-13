@@ -1,5 +1,5 @@
 from pydantic import BaseModel, model_validator, ValidationError
-from src.json_utils import load_json_file
+from src.json_utils import load_json
 from typing import Any
 
 
@@ -81,7 +81,7 @@ def load_and_validate(args: dict[str, str]) -> dict[str, list]:
     fn_errors = []
 
     prompts = []
-    for p in load_json_file(args['input']):
+    for p in load_json(args['input']):
         try:
             prompts.append(Prompt(**p))
         except ValidationError as e:
@@ -91,7 +91,7 @@ def load_and_validate(args: dict[str, str]) -> dict[str, list]:
     prompt_errors.append("")
 
     functions = []
-    for fn in load_json_file(args['functions']):
+    for fn in load_json(args['functions']):
         try:
             functions.append(FunctionDefinition(**fn))
         except ValidationError as e:
