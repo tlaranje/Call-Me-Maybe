@@ -1,7 +1,6 @@
 from src.constants import Colors as C
 from pydantic import ValidationError
-from src.llm_utils import get_valid_token_ids, load_vocab, get_state
-from llm_sdk import Small_LLM_Model
+# from llm_sdk import Small_LLM_Model
 from src.validation_models import load_and_validate
 from src.get_args import get_args
 import json
@@ -23,11 +22,7 @@ def main() -> None:
         # vocab = load_vocab(model)
         # js = '{"name":"fn_add_numbers","parameters":{"a":2.0,"b":3.0}}'
         js = '{"name":'
-        print(get_state(js, functions))
 
-        """ lst_ints = get_valid_token_ids(vocab, js, functions)
-        for token_id in lst_ints:
-            print(repr(token_id), repr(vocab[token_id])) """
     except ValidationError as e:
         for error in e.errors():
             msg = error['msg'].removeprefix("Value error, ")
