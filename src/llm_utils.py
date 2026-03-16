@@ -21,24 +21,6 @@ def build_prompt(functions: list, prompt: str) -> str:
     )
 
 
-def load_vocab(model: LLM_Model) -> dict[int, str]:
-    vocab_path = model.get_path_to_vocab_file()
-    with open(vocab_path, "r") as f:
-        vocab = json.load(f)
-    id_to_token = {v: k for k, v in vocab.items()}
-    return id_to_token
-
-
-def get_valid_token_ids(
-    vocab: dict[int, str], js: str, functions: list
-) -> list[int]:
-    return []
-
-
-def generate_json(model, input_ids, valid_tokens_fn) -> None:
-    pass
-
-
 def generate_numbers(
     model: LLM_Model, func: FuncDef, prompt: str
 ) -> dict[str, int]:
@@ -74,32 +56,96 @@ def generate_numbers(
     return output
 
 
-def generate_function_name(model: LLM_Model, funcs: list, prompt: str) -> str:
-    f_names = [f.name for f in funcs]
-    output = "fn_"
-    instructions = (
-        f'<|im_start|>system\n'
-        f'You are a function calling assistant.<|im_end|>\n'
-        f'<|im_start|>user\n'
-        f'Available functions: {f_names}\n'
-        f'The most appropriate function '
-        f'for this prompt is: "{prompt}"?<|im_end|>\n'
-        f'<|im_start|>assistant\n'
-        f'fn_'
+def load_vocab(model: LLM_Model) -> dict[int, str]:
+    vocab_path = model.get_path_to_vocab_file()
+    with open(vocab_path, "r") as f:
+        vocab = json.load(f)
+    id_to_token = {v: k for k, v in vocab.items()}
+    return id_to_token
+
+
+def get_func_instructions(funcs: list, prompt: str) -> str:
+    available_functions = sorted([f.name for f in funcs])
+    return (
+        '<|im_start|>system\n'
+        '{"available_functions": '
+        + str(available_functions)
+        + ',"goal": "Select the correct function'
+        ' to execute the user\'s prompt"}<|im_end|>\n'
+        '<|im_start|>user\n'
+        + prompt
+        + '<|im_end|>\n'
+        '<|im_start|>assistant\n'
     )
+
+
+def generate_function_name(model: LLM_Model, funcs: list, prompt: str) -> str:
+    f_names = sorted([f.name for f in funcs])
+    output = "fn_"
+    instructions = get_func_instructions(funcs, prompt)
     input_ids = model.encode(instructions + output).tolist()[0]
     logits = model.get_logits_from_input_ids(input_ids)
     vocab = load_vocab(model)
-    while output not in f_names:
-        token_id = logits.index(max(logits))
-        token_str = vocab[token_id].replace("Ġ", " ").strip()
 
+    while output not in f_names:
+        ft_list = [f for f in f_names if f.startswith(output)]
+        if len(ft_list) == 1:
+            output = ft_list[0]
+            break
+
+        token_id = logits.index(max(logits))
+        if token_id not in vocab:
+            logits[token_id] = -math.inf
+            continue
+
+        current_token = vocab[token_id]
+        if current_token.startswith('Ġ'):
+            current_token = current_token[1:]
+
+        valid_token = False
+        for f in f_names:
+            if f.startswith(output + current_token):
+                output += current_token
+                input_ids = model.encode(instructions + output).tolist()[0]
+                logits = model.get_logits_from_input_ids(input_ids)
+                valid_token = True
+                break
+
+        if not valid_token:
+            logits[token_id] = -math.inf
+
+    return output
+
+
+"""
+def generate_function_name(model: LLM_Model, funcs: list, prompt: str) -> str:
+    f_names = [f.name for f in funcs]
+    output = "fn_"
+    instructions = get_func_instructions(funcs, prompt)
+    input_ids = model.encode(instructions + output).tolist()[0]
+    logits = model.get_logits_from_input_ids(input_ids)
+    vocab = load_vocab(model)
+
+    while output not in f_names:
+        # Shortcut se só restar uma função candidata
+        ft_list = [f for f in f_names if f.startswith(output)]
+        if len(ft_list) == 1:
+            output = ft_list[0]
+            break
+
+        token_id = logits.index(max(logits))
+        token_str = vocab[token_id].replace("Ġ", " ")  # sem .strip()
+
+        valid_token = False
         for f in f_names:
             if f.startswith(output + token_str):
                 output += token_str
                 input_ids = model.encode(instructions + output).tolist()[0]
                 logits = model.get_logits_from_input_ids(input_ids)
+                valid_token = True
                 break
-            else:
-                logits[token_id] = -math.inf
-    return output
+
+        if not valid_token:
+            logits[token_id] = -math.inf
+
+    return output """
