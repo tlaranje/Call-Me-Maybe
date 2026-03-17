@@ -13,18 +13,6 @@ def load_vocab(model: LLM_Model) -> Any:
 """ def generate_number(
     model: LLM_Model, func: FuncDef, prompt: str
 ) -> dict[str, int]:
-    output: dict[str, int] = {}
-    instructions = (
-        f'<|im_start|>system\n'
-        f'You are a params generate assistant.<|im_end|>\n'
-        f'<|im_start|>user\n'
-        f'In this function: {func}\n'
-        f'Generate the params values '
-        f'for this prompt is: "{prompt}"?<|im_end|>\n'
-        f'<|im_start|>assistant\n'
-        f'str:int'
-    )
-    vocab = load_vocab(model)
     for param_name, param in func.parameters.items():
         current_value = ""
         while True:

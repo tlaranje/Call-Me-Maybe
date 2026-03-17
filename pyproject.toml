@@ -17,14 +17,23 @@ dependencies = [
 ]
 
 [tool.mypy]
-files = ["src", "tests"]      # Só verifica suas pastas
-exclude = "build|dist|.venv|site-packages"  # Ignora pacotes globais
-ignore_missing_imports = true # Ignora pacotes sem stubs
-cache_dir = ".mypy_cache"     # Para acelerar
+files = ["src", "tests"]
+exclude = "build|dist|.venv|site-packages"
+ignore_missing_imports = true
+cache_dir = ".mypy_cache"
 
 [[tool.mypy.overrides]]
-module = "llm_sdk.*"
+module = [
+    "torch.*",
+    "transformers.*",
+    "accelerate.*",
+    "huggingface_hub.*",
+    "tokenizers.*",
+    "safetensors.*",
+]
 ignore_errors = true
+ignore_missing_imports = true
+follow_imports = "skip"
 
 [[tool.mypy.overrides]]
 module = "src.llm_utils"

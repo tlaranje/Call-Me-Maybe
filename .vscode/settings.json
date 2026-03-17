@@ -1,3 +1,13 @@
 {
-    "python-envs.defaultEnvManager": "ms-python.python:system"
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python.analysis.exclude": [
+        "**/torch/**",
+        "**/transformers/**",
+        "**/nvidia_*/**",
+        "**/triton/**",
+        "**/accelerate/**"
+    ],
+    "python.analysis.indexing": false,
+    "python.analysis.autoImportCompletions": false,
+    "update.mode": "none"
 }

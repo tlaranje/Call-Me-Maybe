@@ -51,9 +51,7 @@ def get_func_instructions(funcs: list, prompt: str) -> str:
     )
 
 
-def generate_function_name(
-    model: LLM_Model, funcs: list, prompt: str
-) -> str:
+def generate_function_name(llm: LLM_Model, funcs: list, prompt: str) -> str:
     """Pick the best matching function name for a given prompt.
 
     Implements a greedy constrained decoding loop: at each step, the
@@ -75,7 +73,7 @@ def generate_function_name(
     f_names = sorted([f.name for f in funcs])
     output = "fn_"
     instructions = get_func_instructions(funcs, prompt)
-    vocab = load_vocab(model)
+    vocab = load_vocab(llm)
 
     def encode_and_get_logits() -> tuple:
         """Re-encode the current context and return fresh logits.
@@ -88,8 +86,8 @@ def generate_function_name(
             of token IDs for the full context and logits is a 1-D tensor
             of raw scores over the entire vocabulary.
         """
-        ids = model._encode(instructions + output).tolist()[0]
-        return ids, model.get_logits_from_input_ids(ids)
+        ids = llm._encode(instructions + output).tolist()[0]
+        return ids, llm.get_logits_from_input_ids(ids)
 
     input_ids, logits = encode_and_get_logits()
 

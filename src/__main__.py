@@ -15,18 +15,18 @@ def write_results(file: str, res: list) -> None:
 
 def main() -> None:
     try:
-        model = Small_LLM_Model()
+        llm = Small_LLM_Model()
         print()
         args = get_args()
         data = load_and_validate(args)
 
         functions = data['functions']
         for p in data['prompts']:
-            func_name = generate_function_name(model, functions, p.prompt)
+            func_name = generate_function_name(llm, functions, p.prompt)
             func = next((f for f in functions if f.name == func_name), None)
             params = {}
             if func and func.parameters:
-                params = generate_parameters(model, func, p.prompt)
+                params = generate_parameters(llm, func, p.prompt)
                 print(params)
             # print(params)
     except ValidationError as e:
