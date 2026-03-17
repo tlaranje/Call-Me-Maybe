@@ -1,7 +1,8 @@
 from src.constants import Colors as C
 from pydantic import ValidationError
 from llm_sdk import Small_LLM_Model
-from src.llm_utils import generate_function_name
+from src.function_selector import generate_function_name
+from src.param_generator import generate_parameters
 from src.validation_models import load_and_validate
 from src.get_args import get_args
 import json
@@ -22,7 +23,12 @@ def main() -> None:
         functions = data['functions']
         for p in data['prompts']:
             func_name = generate_function_name(model, functions, p.prompt)
-            print(p.prompt, "->", func_name)
+            func = next((f for f in functions if f.name == func_name), None)
+            params = {}
+            if func and func.parameters:
+                params = generate_parameters(model, func, p.prompt)
+                print(params)
+            # print(params)
     except ValidationError as e:
         for error in e.errors():
             msg = error['msg'].removeprefix("Value error, ")

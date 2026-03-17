@@ -8,8 +8,6 @@ else
     SGOINFRE="$(pwd)"
 fi
 
-# EXPORTS
-export UV_PROJECT_ENVIRONMENT="$SGOINFRE/.venv"
 export UV_CACHE_DIR="$SGOINFRE/.uv_cache"
 export HF_HOME="$SGOINFRE/.llm"
 export TRANSFORMERS_CACHE="$SGOINFRE/.llm"

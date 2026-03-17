@@ -54,67 +54,72 @@ def get_func_instructions(funcs: list, prompt: str) -> str:
 def generate_function_name(
     model: LLM_Model, funcs: list, prompt: str
 ) -> str:
-    """Select the best matching function name for a given prompt.
+    """Pick the best matching function name for a given prompt.
 
-    Uses the model's token logits to greedily build a function name
-    character-by-character, constrained to only the available function
-    names. At each step, only tokens that keep at least one valid
-    function name reachable are considered.
+    Implements a greedy constrained decoding loop: at each step, the
+    vocabulary is filtered to only tokens that extend the current prefix
+    toward at least one valid function name. The highest-scoring surviving
+    token is appended, and the process repeats until the prefix matches
+    exactly one function name or no valid extension exists.
 
-    Parameters
-    ----------
-    model : LLM_Model
-        The language model used to score tokens.
-    funcs : list
-        List of function objects, each with a `.name` attribute.
-    prompt : str
-        Natural language description of the desired operation.
+    Args:
+        model: The LLM wrapper used to score tokens.
+        funcs: Available functions, each with a `.name` attribute.
+        prompt: Natural language description of the desired operation,
 
-    Returns
-    -------
-    str
-        The name of the selected function, or None if no valid
-        function could be resolved.
+    Returns:
+        The selected function name (e.g. `"fn_add_numbers"`), or an
+        empty string if constrained decoding could not resolve any
+        valid function from the given prompt.
     """
-    # Sort function names to ensure deterministic behaviour
     f_names = sorted([f.name for f in funcs])
-    output = "fn_"  # all function names share this prefix
+    output = "fn_"
     instructions = get_func_instructions(funcs, prompt)
     vocab = load_vocab(model)
 
-    def encode_and_get_logits():
-        # Encode the full context (instructions + current output so far)
-        # and return the token ids and next-token logits
+    def encode_and_get_logits() -> tuple:
+        """Re-encode the current context and return fresh logits.
+
+        Concatenates the system instructions with the partially built
+        function name so the model scores the next token in context.
+
+        Returns:
+            A tuple of (input_ids, logits) where input_ids is the list
+            of token IDs for the full context and logits is a 1-D tensor
+            of raw scores over the entire vocabulary.
+        """
         ids = model._encode(instructions + output).tolist()[0]
         return ids, model.get_logits_from_input_ids(ids)
 
     input_ids, logits = encode_and_get_logits()
 
     while output not in f_names:
-        # Narrow down to functions still reachable given current output
         ft_list = [f for f in f_names if f.startswith(output)]
+
+        # Only one candidate left — complete it without querying the model
         if len(ft_list) == 1:
-            # Only one candidate left — no need to consult the model
             output = ft_list[0]
             break
 
-        # Build a list of tokens that would keep at least one
-        # function name reachable if appended to the current output
-        valid_tokens = []
+        # No function starts with the current prefix — decoding failed
+        if not ft_list:
+            return ""
 
+        # Collect every vocabulary token that still leads to a valid function
+        valid_tokens = []
         for s, tid in vocab.items():
-            # Strip the leading space marker used by some tokenizers
+            # Some tokenizers prefix tokens with 'Ġ' to mark a leading space
             token_str = s[1:] if s.startswith('Ġ') else s
 
             if token_str and any(
-             f.startswith(output + token_str) for f in f_names):
+                f.startswith(output + token_str) for f in f_names
+            ):
                 valid_tokens.append((tid, token_str))
 
         if not valid_tokens:
-            # No token can extend output towards a valid function name
             return ""
 
-        # Pick the valid token with the highest logit score
+        # Greedily pick the highest-scoring valid token
         token_id, token_str = max(valid_tokens, key=lambda x: logits[x[0]])
 
         output += token_str

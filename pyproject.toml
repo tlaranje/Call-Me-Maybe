@@ -13,12 +13,14 @@ dependencies = [
     "pytest>=9.0.2",
     "torch>=2.10.0",
     "transformers>=5.0.0",
-    "accelerate>=1.10.0",
-    "pydantic>=2.12.5"
+    "accelerate>=1.10.0"
 ]
 
 [tool.mypy]
-python_executable = ".venv/bin/python"
+files = ["src", "tests"]      # Só verifica suas pastas
+exclude = "build|dist|.venv|site-packages"  # Ignora pacotes globais
+ignore_missing_imports = true # Ignora pacotes sem stubs
+cache_dir = ".mypy_cache"     # Para acelerar
 
 [[tool.mypy.overrides]]
 module = "llm_sdk.*"
@@ -31,3 +33,7 @@ ignore_errors = true
 [[tool.mypy.overrides]]
 module = "uvcache.*"
 ignore_errors = true
+
+[tool.flake8]
+exclude = "build,dist,.venv,site-packages,llm_sdk"
+max-line-length = 80

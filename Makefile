@@ -43,6 +43,9 @@ clean:
 	@$(FIND) . -type d -name ".pytest_cache" -exec $(RM) {} +
 	@$(FIND) . -type f -name "*.pyc" -delete
 	@$(FIND) . -type f -name "*.pyo" -delete
+
+
+fclean clean:
 	@echo "Removing sgoinfre cache..."
 	@bash -c '. ./setup_env.sh && \
 	rm -rf $$SGOINFRE/.venv $$SGOINFRE/.uv_cache $$SGOINFRE/.llm'
