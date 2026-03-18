@@ -27,7 +27,7 @@ def main() -> None:
             params = {}
             if func and func.parameters:
                 params = generate_parameters(llm, func, p.prompt)
-                print(p, "->", params)
+                print(p.prompt, "->", params)
     except ValidationError as e:
         for error in e.errors():
             msg = error['msg'].removeprefix("Value error, ")
