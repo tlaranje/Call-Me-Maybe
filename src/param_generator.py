@@ -1,43 +1,29 @@
 from llm_sdk import Small_LLM_Model as LLM_Model
 from src.validation_models import FunctionDefinition as FuncDef
-from src.validation_models import FunctionParameter as FuncPar
 from src.utils import load_vocab
 from typing import Any, Callable
 import math
 
 
-def get_params_instructions(
-    func: FuncDef, prompt: str, param: dict[str, FuncPar], extracted: dict
-) -> str:
-    """
-    Build a formatted instruction prompt to extract a specific parameter.
+def get_params_instructions(func: FuncDef, prompt: str) -> str:
+    """Build the base instruction prompt for parameter extraction.
 
     Args:
-        func (FuncDef): Function definition containing parameter metadata.
-        prompt (str): The original user input.
-        p_name (str): Name of the parameter to extract.
-        already_extracted (dict): Previously extracted parameters.
+        func: The function definition.
+        prompt: The user's natural language prompt.
 
     Returns:
-        str: A formatted instruction string for the LLM.
+        A formatted base instruction string for the LLM.
     """
-    param_name = next(iter(param.keys()))
-    param_type = getattr(param[param_name], "type", "unknown")
-    if not extracted and param_type == "string":
-        context = f"{param_name}= "
-    elif not extracted and param_type == "number":
-        context = f"{param_name}= arg"
-    else:
-        context = "\n".join(f"{k} = {v}" for k, v in extracted.items())
     return (
         "<|im_start|>system\n"
-        "Select the arguments for the following function, "
-        "according to the user's prompt, followed by a \n character."
-        f"{str(func)}" "<|im_end|>\n"
-        "<|im_start|>user\n" f"{prompt}\n" "<|im_end|>\n"
+        "Select the arguments for the following function "
+        "according to the user's prompt, followed by a \\n character. "
+        f"{str(func)}<|im_end|>\n"
+        "<|im_start|>user\n"
+        f"{prompt}\n"
+        "<|im_end|>\n"
         "<|im_start|>assistant\n"
-        f"{context}\n\n"
-        f"{param_name}: "
     )
 
 
@@ -52,7 +38,7 @@ def generate_number(llm: LLM_Model, ins: str, p_name: str) -> dict[str, float]:
         ins (str): Instruction prompt given to the model.
         p_name (str): Name of the parameter to return.
 
-    Returns:
+    Return:
         dict[str, float]: A dictionary mapping the parameter name to the
         generated numeric value.
     """
@@ -92,35 +78,54 @@ def generate_number(llm: LLM_Model, ins: str, p_name: str) -> dict[str, float]:
 
 
 def generate_string(llm: LLM_Model, ins: str, p_name: str) -> dict[str, str]:
+    """
+    Generate a string value using constrained decoding. The function builds
+    the string token by token, stopping when the newline token 'Ċ' appears.
+    Leading space markers ('Ġ') are converted to real spaces, preserving
+    the original whitespace from the prompt.
+
+    Args:
+        llm (LLM_Model): The language model used to generate tokens.
+        ins (str): Instruction prompt given to the model.
+        p_name (str): Name of the parameter to return.
+
+    Return:
+        dict[str, str]: A dictionary mapping the parameter name to the
+        generated string value.
+    """
     curr_value = ""
     curr_token = ""
 
-    # Encode the initial prompt
     input_ids = llm._encode(ins + curr_value).tolist()[0]
-
-    # Get initial logits and vocabulary
     logits = llm.get_logits_from_input_ids(input_ids)
     vocab = load_vocab(llm)
-    # Keep generating until the stop token appears
+
     while curr_token != 'Ċ':
+        # Greedy decoding — pick the token with the highest probability
         raw_token = max(vocab.keys(), key=lambda s: logits[vocab[s]])
-        curr_token = max(vocab.keys(), key=lambda s: logits[vocab[s]])
+
+        # BPE tokenizers use Ġ to indicate a space before the token
         if raw_token.startswith('Ġ') and curr_value:
-            curr_token = ' ' + raw_token[1:]  # espaço + resto
+            curr_token = ' ' + raw_token[1:]
         else:
             curr_token = (
                 raw_token[1:] if raw_token.startswith('Ġ') else raw_token
             )
+
+        # Pure whitespace token — set its logit to -inf and retry
         if not curr_token:
-            logits[vocab[raw_token]] = -math.inf  # ← usa raw_token
+            logits[vocab[raw_token]] = -math.inf
             continue
+
+        # End-of-line token found — flush remaining chars and break
         if 'Ċ' in curr_token:
             curr_value += curr_token.split('Ċ')[0]
             break
-        if curr_token != 'Ċ':
-            curr_value += curr_token
-            input_ids = llm._encode(ins + curr_value).tolist()[0]
-            logits = llm.get_logits_from_input_ids(input_ids)
+
+        # Extend the current value and recompute logits
+        curr_value += curr_token
+        input_ids = llm._encode(ins + curr_value).tolist()[0]
+        logits = llm.get_logits_from_input_ids(input_ids)
 
     return {p_name: curr_value}
 
@@ -151,17 +156,18 @@ TYPE_GENERATORS: dict[str, GeneratorFn] = {
 
 
 def generate_parameters(
-    model: LLM_Model, func: FuncDef, prompt: str
+    model: LLM_Model, func: FuncDef, prompt: str, instructions: str
 ) -> dict[str, Any]:
     """Generate all argument values for a function call.
 
-    Uses a hybrid approach: regex extraction for numbers,
-    constrained decoding for strings and booleans.
+    Builds instructions progressively — each generated value is appended
+    to the context before generating the next parameter.
 
     Args:
         model: The LLM wrapper used to score tokens.
         func: The target function definition, including parameter schema.
         prompt: Natural language description of the desired operation.
+        instructions: Base instruction prompt from get_base_instructions.
 
     Returns:
         A dict mapping every parameter name to its decoded value.
@@ -172,14 +178,16 @@ def generate_parameters(
     res: dict[str, Any] = {}
 
     for param_name, param in func.parameters.items():
-        param_dict = {param_name: param}
-        instructions = get_params_instructions(func, prompt, param_dict, res)
+        instructions += f'{param_name}='
         generator = TYPE_GENERATORS.get(param.type)
         if generator is None:
             raise ValueError(
                 f"No generator registered for type '{param.type}' "
                 f"(parameter '{param_name}' of '{func.name}')"
             )
-        res.update(generator(model, instructions, param_name))
+        value = generator(model, instructions, param_name)
+        res.update(value)
+        # Accumulate generated value so the next parameter has context
+        instructions += f'{list(value.values())[0]}\n'
 
     return res
