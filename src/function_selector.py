@@ -1,5 +1,7 @@
 from llm_sdk import Small_LLM_Model as LLM_Model
 from src.utils import load_vocab
+from src.constants import Colors as C
+import time
 
 
 def get_func_instructions(funcs: list, prompt: str) -> str:
@@ -69,44 +71,52 @@ def generate_function_name(llm: LLM_Model, funcs: list, prompt: str) -> str:
         ids = llm._encode(instructions + output).tolist()[0]
         return ids, llm.get_logits_from_input_ids(ids)
 
+    def print_char(char: str) -> None:
+        """Print current output character by character in red."""
+        print(
+            f"\r{C.RED}\"name\": {output}{C.END}\033[K",
+            end='', flush=True
+        )
+        time.sleep(0.1)
+
     # Get initial logits
     input_ids, logits = encode_and_get_logits()
 
-    # Keep generating until the output matches a full function name
+    # Show initial prefix
+    print(f"\r{C.RED}\"name\": \"{output}\"{C.END}\033[K", end='', flush=True)
+
     while output not in f_names:
-        # Filter to only functions that still match the current prefix
         ft_list = [f for f in f_names if f.startswith(output)]
 
-        # If only one function matches, we can finish immediately
         if len(ft_list) == 1:
-            output = ft_list[0]
+            # Animate remaining characters one by one
+            for char in ft_list[0][len(output):]:
+                output += char
+                print_char(char)
             break
 
-        # If no function matches the prefix, decoding failed
         if not ft_list:
             return ""
 
-        # Collect tokens that keep the prefix valid
         valid_tokens = []
         for s, tid in vocab.items():
-            # Remove leading space marker if present
             token_str = s[1:] if s.startswith('Ġ') else s
-
-            # Token must not be empty and must extend toward a valid function
             if token_str and any(
                 f.startswith(output + token_str) for f in f_names
             ):
                 valid_tokens.append((tid, token_str))
 
-        # If no valid token can extend the prefix, decoding fails
         if not valid_tokens:
             return ""
 
-        # Pick the valid token with the highest score
         token_id, token_str = max(valid_tokens, key=lambda x: logits[x[0]])
 
-        # Append the token to the output and update logits
-        output += token_str
-        input_ids, logits = encode_and_get_logits()
+        # Animate token character by character
+        for char in token_str:
+            output += char
+            print_char(char)
 
+        input_ids, logits = encode_and_get_logits()
+    time.sleep(.5)
+    print(f"\r{C.GREEN}\"name\": \"{output}\"{C.END}\033[K")
     return output

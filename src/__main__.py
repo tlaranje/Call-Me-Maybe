@@ -9,30 +9,74 @@ import json
 
 
 def write_results(file: str, res: list) -> None:
+    """
+    Write the results to a JSON file.
+
+    Args:
+        file (str): Path to the output file.
+        res (list): List of results to write.
+    """
     with open(file, "w") as fd:
         fd.write(json.dumps(res, indent=2))
 
 
 def main() -> None:
+    """
+    Entry point of the function calling pipeline.
+
+    Loads the LLM, reads the input prompts and function definitions,
+    and for each prompt selects the correct function using constrained
+    decoding, then extracts its arguments. Results are written
+    incrementally to the output JSON file after each prompt.
+    """
+    final_json: list = []
+
     try:
         llm = Small_LLM_Model()
-        print()
         args = get_args()
         data = load_and_validate(args)
+        print()
+
+        print(
+            f"{C.BLUE}=== Generating functions "
+            f"names and parameters ==={C.END}\n"
+        )
 
         functions = data['functions']
         for p in data['prompts']:
+            print(f"{C.GREEN}\"prompt\": \"{p.prompt}\"{C.END}")
+            # Generate the best matching function name for the prompt
             func_name = generate_function_name(llm, functions, p.prompt)
+
+            # Find the full function definition from the list
             func: FunctionDefinition | None = next(
                 (f for f in functions if f.name == func_name), None
             )
+
             if func is None:
                 raise ValueError(f"Function '{func_name}' not found")
+
+            # Build the base instruction prompt for parameter extraction
             instructions = get_params_instructions(func, p.prompt)
+
+            # Generate parameters only if the function expects them
             params = {}
             if func and func.parameters:
-                params = generate_parameters(llm, func, p.prompt, instructions)
-                print(p.prompt, "->", params)
+                params = generate_parameters(
+                    llm, func, p.prompt, instructions
+                )
+
+            # Append the result for this prompt to the output list
+            final_json.append({
+                "prompt": p.prompt,
+                "name": func_name,
+                "parameters": params
+            })
+
+            # Write incrementally so partial results are saved on crash
+            write_results("data/output/function_calls.json", final_json)
+            print()
+
     except ValidationError as e:
         for error in e.errors():
             msg = error['msg'].removeprefix("Value error, ")

@@ -3,6 +3,8 @@ from src.validation_models import FunctionDefinition as FuncDef
 from src.utils import load_vocab
 from typing import Any, Callable
 import math
+from src.constants import Colors as C
+import time
 
 
 def get_params_instructions(func: FuncDef, prompt: str) -> str:
@@ -116,7 +118,6 @@ def generate_string(llm: LLM_Model, ins: str, p_name: str) -> dict[str, str]:
         if not curr_token:
             logits[vocab[raw_token]] = -math.inf
             continue
-
         # End-of-line token found — flush remaining chars and break
         if 'Ċ' in curr_token:
             curr_value += curr_token.split('Ċ')[0]
@@ -126,12 +127,8 @@ def generate_string(llm: LLM_Model, ins: str, p_name: str) -> dict[str, str]:
         curr_value += curr_token
         input_ids = llm._encode(ins + curr_value).tolist()[0]
         logits = llm.get_logits_from_input_ids(input_ids)
-
+        curr_value = curr_value.replace('\\\\', '\\')
     return {p_name: curr_value}
-
-
-def generate_bool(llm: LLM_Model, ins: str, p_name: str) -> dict[str, bool]:
-    return {"is": True}
 
 
 """
@@ -150,8 +147,7 @@ This is used to select the correct generator based on the parameter type.
 """
 TYPE_GENERATORS: dict[str, GeneratorFn] = {
     "number": generate_number,
-    "string": generate_string,
-    "bool":   generate_bool,
+    "string": generate_string
 }
 
 
@@ -179,15 +175,39 @@ def generate_parameters(
 
     for param_name, param in func.parameters.items():
         instructions += f'{param_name}='
+
         generator = TYPE_GENERATORS.get(param.type)
         if generator is None:
             raise ValueError(
                 f"No generator registered for type '{param.type}' "
                 f"(parameter '{param_name}' of '{func.name}')"
             )
+
+        # Show current parameter being generated in red
+        print(
+            f"\r{C.RED}\"parameters\": {param_name}=...{C.END}\033[K",
+            end='', flush=True
+        )
+
         value = generator(model, instructions, param_name)
         res.update(value)
-        # Accumulate generated value so the next parameter has context
-        instructions += f'{list(value.values())[0]}\n'
+
+        # Show generated value character by character
+        generated = str(list(value.values())[0])
+        displayed = ""
+        for char in generated:
+            displayed += char
+            print(
+                f"\r{C.RED}\"parameters\": {param_name}="
+                f"{displayed}{C.END}\033[K",
+                end='', flush=True
+            )
+            time.sleep(0.05)
+        time.sleep(.5)
+
+        instructions += f'{generated}\n'
+
+    # Show all parameters complete in green
+    print(f"\r{C.GREEN}\"parameters\": {res}{C.END}\033[K")
 
     return res
