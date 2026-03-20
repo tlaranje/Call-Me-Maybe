@@ -13,7 +13,7 @@ def load_vocab(llm: LLM_Model) -> Any:
     Returns:
         Any: The parsed vocabulary mapping token IDs to token strings.
     """
-    vocab_path = llm.get_path_to_vocabulary_json()
+    vocab_path = llm.get_path_to_vocab_file()
     with open(vocab_path, "r") as f:
         vocab = json.load(f)
     return vocab

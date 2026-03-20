@@ -48,7 +48,7 @@ def generate_number(llm: LLM_Model, ins: str, p_name: str) -> dict[str, float]:
     curr_token = ""
 
     # Encode the initial prompt
-    input_ids = llm._encode(ins + curr_value).tolist()[0]
+    input_ids = llm.encode(ins + curr_value).tolist()[0]
 
     # Get initial logits and vocabulary
     logits = llm.get_logits_from_input_ids(input_ids)
@@ -66,7 +66,7 @@ def generate_number(llm: LLM_Model, ins: str, p_name: str) -> dict[str, float]:
             if math.isfinite(value):
                 # Accept the token and update context
                 curr_value += curr_token
-                input_ids = llm._encode(ins + curr_value).tolist()[0]
+                input_ids = llm.encode(ins + curr_value).tolist()[0]
                 logits = llm.get_logits_from_input_ids(input_ids)
             else:
                 # Reject tokens that produce non‑finite numbers
@@ -98,7 +98,7 @@ def generate_string(llm: LLM_Model, ins: str, p_name: str) -> dict[str, str]:
     curr_value = ""
     curr_token = ""
 
-    input_ids = llm._encode(ins + curr_value).tolist()[0]
+    input_ids = llm.encode(ins + curr_value).tolist()[0]
     logits = llm.get_logits_from_input_ids(input_ids)
     vocab = load_vocab(llm)
 
@@ -125,7 +125,7 @@ def generate_string(llm: LLM_Model, ins: str, p_name: str) -> dict[str, str]:
 
         # Extend the current value and recompute logits
         curr_value += curr_token
-        input_ids = llm._encode(ins + curr_value).tolist()[0]
+        input_ids = llm.encode(ins + curr_value).tolist()[0]
         logits = llm.get_logits_from_input_ids(input_ids)
         curr_value = curr_value.replace('\\\\', '\\')
     return {p_name: curr_value}
