@@ -2,6 +2,7 @@
 # ABOUTME: Provides Small_LLM_Model class for loading and running causal
 # language models.
 
+from typing import Any
 import torch as t
 from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedTokenizer, PreTrainedModel, logging
 from huggingface_hub import hf_hub_download
@@ -78,7 +79,7 @@ class Small_LLM_Model:
         ids = self._tokenizer.encode(text, add_special_tokens=False)
         return t.tensor([ids], device=self._device, dtype=t.long)
 
-    def decode(self, ids: t.Tensor | list[int]) -> str:
+    def decode(self, ids: t.Tensor | list[int]) -> Any:
         """Inverse of :py:meth:`encode`. Removes special tokens."""
         if isinstance(ids, t.Tensor):
             ids = ids.tolist()
@@ -97,27 +98,24 @@ class Small_LLM_Model:
         logits = out.logits[0, -1].tolist()
         return [float(x) for x in logits]
 
-    def get_path_to_vocab_file(self) -> str:
-        name = self._tokenizer.vocab_files_names.get
-        ('vocab_file', "vocab.json")
+    def get_path_to_vocab_file(self) -> Any:
+        name = self._tokenizer.vocab_files_names.get('vocab_file', "vocab.json")
         vocab_path = hf_hub_download(
             repo_id=self._model_name,
             filename=name
         )
         return vocab_path
 
-    def get_path_to_merges_file(self) -> str:
-        name = self._tokenizer.vocab_files_names.get
-        ('merges_file', "merges.txt")
+    def get_path_to_merges_file(self) -> Any:
+        name = self._tokenizer.vocab_files_names.get('merges_file', "merges.txt")
         merges_path = hf_hub_download(
             repo_id=self._model_name,
             filename=name
         )
         return merges_path
 
-    def get_path_to_tokenizer_file(self) -> str:
-        name = self._tokenizer.vocab_files_names.get
-        ('tokenizer_file', "tokenizer.json")
+    def get_path_to_tokenizer_file(self) -> Any:
+        name = self._tokenizer.vocab_files_names.get('tokenizer_file', "tokenizer.json")
         tokenizer_path = hf_hub_download(
             repo_id=self._model_name,
             filename=name

@@ -72,7 +72,7 @@ def generate_function_name(
             of token IDs for the full context and logits is a 1-D tensor
             of raw scores over the entire vocabulary.
         """
-        ids = llm.encode(instructions + output)
+        ids = llm.encode(instructions + output).tolist()[0]
         return ids, llm.get_logits_from_input_ids(ids)
 
     def print_char(char: str) -> None:
