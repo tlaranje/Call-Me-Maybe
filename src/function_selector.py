@@ -1,10 +1,12 @@
+from src.validation_models import FunctionDefinition as FuncDef
 from llm_sdk import Small_LLM_Model as LLM_Model
 from src.utils import load_vocab
 from src.constants import Colors as C
+from typing import Any
 import time
 
 
-def get_func_instructions(funcs: list, prompt: str) -> str:
+def get_func_instructions(funcs: list[FuncDef], prompt: str) -> str:
     """
     Create instructions for the LLM to choose the best function
     based on a prompt.
@@ -31,7 +33,9 @@ def get_func_instructions(funcs: list, prompt: str) -> str:
     )
 
 
-def generate_function_name(llm: LLM_Model, funcs: list, prompt: str) -> str:
+def generate_function_name(
+        llm: LLM_Model, funcs: list[FuncDef], prompt: str
+) -> str:
     """
     Pick the best matching function name for a given prompt.
 
@@ -54,9 +58,9 @@ def generate_function_name(llm: LLM_Model, funcs: list, prompt: str) -> str:
     f_names = sorted([f.name for f in funcs])
     output = "fn_"
     instructions = get_func_instructions(funcs, prompt)
-    vocab = load_vocab(llm)
+    vocab: Any = load_vocab(llm)
 
-    def encode_and_get_logits() -> tuple:
+    def encode_and_get_logits() -> tuple[Any, list[float]]:
         """
         Re-encode the current context and return fresh logits.
 

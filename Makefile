@@ -45,7 +45,7 @@ clean:
 	@$(FIND) . -type f -name "*.pyo" -delete
 
 
-fclean clean:
+fclean: clean
 	@echo "Removing sgoinfre cache..."
 	@bash -c '. ./setup_env.sh && \
 	rm -rf $$SGOINFRE/.venv $$SGOINFRE/.uv_cache $$SGOINFRE/.llm'

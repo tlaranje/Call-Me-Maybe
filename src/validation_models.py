@@ -128,7 +128,7 @@ class Prompt(BaseModel):
         return values
 
 
-def load_and_validate(args: dict[str, str]) -> dict[str, list]:
+def load_and_validate(args: dict[str, str]) -> dict[str, list[Any]]:
     """
     Load input JSON files and validate them using Pydantic models.
 

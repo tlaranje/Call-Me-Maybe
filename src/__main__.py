@@ -6,9 +6,11 @@ from src.param_generator import generate_parameters, get_params_instructions
 from src.validation_models import load_and_validate, FunctionDefinition
 from src.get_args import get_args
 import json
+import os
+from typing import Any
 
 
-def write_results(file: str, res: list) -> None:
+def write_results(file: str, res: list[dict[str, Any]]) -> None:
     """
     Write the results to a JSON file.
 
@@ -16,8 +18,9 @@ def write_results(file: str, res: list) -> None:
         file (str): Path to the output file.
         res (list): List of results to write.
     """
+    os.makedirs("data/output", exist_ok=True)
     with open(file, "w") as fd:
-        fd.write(json.dumps(res, indent=2))
+        fd.write(json.dumps(res, indent=4))
 
 
 def main() -> None:
@@ -29,7 +32,7 @@ def main() -> None:
     decoding, then extracts its arguments. Results are written
     incrementally to the output JSON file after each prompt.
     """
-    final_json: list = []
+    final_json: list[dict[str, Any]] = []
 
     try:
         llm = Small_LLM_Model()
@@ -74,7 +77,7 @@ def main() -> None:
             })
 
             # Write incrementally so partial results are saved on crash
-            write_results("data/output/function_calls.json", final_json)
+            write_results(args['output'], final_json)
             print()
 
     except ValidationError as e:
