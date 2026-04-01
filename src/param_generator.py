@@ -200,7 +200,6 @@ def generate_parameters(
 
         generated = str(list(value.values())[0])
         displayed = ""
-
         # Typing animation
         for char in generated:
             displayed += char
@@ -209,15 +208,5 @@ def generate_parameters(
 
         # Append generated value to instruction context
         instructions += f"{generated}\n"
-
-    # Final render (highlight in green)
-    if live:
-        live.update(
-            render_panel(
-                prompt,
-                func.name,
-                {k: f"[bold green]{v}[/bold green]" for k, v in res.items()}
-            )
-        )
 
     return res

@@ -1,4 +1,5 @@
 from llm_sdk import Small_LLM_Model as LLM_Model
+from rich.markup import escape
 from rich.panel import Panel
 from typing import Any
 import json
@@ -20,10 +21,21 @@ def render_panel(
     Returns:
         Panel: Configured Rich Panel ready for rendering.
     """
+    safe_prompt = escape(prompt)
+
+    safe_func = escape(func_name) if func_name else "..."
+
+    safe_params: Any
+    if isinstance(params, dict):
+        params_str = json.dumps(params, ensure_ascii=False)
+        safe_params = escape(params_str)
+    else:
+        safe_params = "..."
+
     return Panel.fit(
-        f'[bold bright_yellow]Prompt:[/bold bright_yellow] {prompt}\n'
-        f'[bold green]Function:[/bold green] {func_name or "..."}\n'
-        f'[bold cyan]Parameters:[/bold cyan] {params or "..."}',
+        f'[bold yellow]Prompt:[/bold yellow] {safe_prompt}\n'
+        f'[bold green]Function:[/bold green] {safe_func}\n'
+        f'[bold cyan]Parameters:[/bold cyan] {safe_params}',
         title="[bold white]Result[/bold white]",
         width=200
     )

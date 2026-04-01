@@ -105,7 +105,7 @@ def main() -> None:
                         llm, func, p.prompt, instructions, live
                     )
 
-                live.update(render_panel(p.prompt, func_name, params))
+                # live.update(render_panel(p.prompt, func_name, params))
 
                 # 5. Save and write result
                 final_json.append({
@@ -117,6 +117,7 @@ def main() -> None:
                 write_results(args['output'], final_json)
 
                 # Print stable result below animated panel
+                live.update("")
                 live.console.print(
                     render_panel(p.prompt, func_name, params)
                 )

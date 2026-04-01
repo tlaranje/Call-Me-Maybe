@@ -130,14 +130,4 @@ def generate_function_name(
         # Recompute logits for new sequence
         input_ids, logits = encode_and_get_logits()
 
-    # Final render (highlight in green)
-    if live:
-        live.update(
-            render_panel(
-                prompt,
-                f"[bold green]{output}[/bold green]",
-                None
-            )
-        )
-
     return output
