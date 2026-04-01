@@ -1,22 +1,23 @@
 from src.validation_models import FunctionDefinition as FuncDef
 from llm_sdk import Small_LLM_Model as LLM_Model
-from src.utils import load_vocab
-from src.constants import Colors as C
+from src.utils import render_panel, load_vocab
 from typing import Any
 import time
 
 
 def get_func_instructions(funcs: list[FuncDef], prompt: str) -> str:
     """
-    Create instructions for the LLM to choose the best function
-    based on a prompt.
+    Create instructions for the LLM to select the best function.
+
+    Builds a structured prompt containing system rules, available
+    functions, and the user input.
 
     Args:
-        funcs (list): List of available functions.
-        prompt (str): User's prompt in natural language.
+        funcs (list[FuncDef]): Available function definitions.
+        prompt (str): User input in natural language.
 
     Returns:
-        str: Formatted instruction string for the LLM.
+        str: Instruction string formatted for the LLM.
     """
     return (
         "<|im_start|>system\n"
@@ -34,77 +35,78 @@ def get_func_instructions(funcs: list[FuncDef], prompt: str) -> str:
 
 
 def generate_function_name(
-        llm: LLM_Model, funcs: list[FuncDef], prompt: str
+    llm: LLM_Model,
+    funcs: list[FuncDef],
+    prompt: str,
+    live=None
 ) -> str:
     """
-    Pick the best matching function name for a given prompt.
+    Generate the most appropriate function name for a given prompt.
 
-    Implements a greedy constrained decoding loop: at each step, the
-    vocabulary is filtered to only tokens that extend the current prefix
-    toward at least one valid function name. The highest-scoring surviving
-    token is appended, and the process repeats until the prefix matches
-    exactly one function name or no valid extension exists.
+    Uses constrained token-by-token generation to ensure the output
+    matches one of the available function names. Optionally streams
+    progress to a Rich Live panel.
 
     Args:
-        llm (LLM_Model): The language model used to generate tokens.
-        funcs (list): List of available functions.
-        prompt (str): User's prompt in natural language.
+        llm (LLM_Model): Language model used for generation.
+        funcs (list[FuncDef]): List of available functions.
+        prompt (str): User input prompt.
+        live (optional): Rich Live instance for streaming UI updates.
 
     Returns:
-        The selected function name (e.g. `"fn_add_numbers"`), or an
-        empty string if constrained decoding could not resolve any
-        valid function from the given prompt.
+        str: Selected function name. Returns empty string if no match is found.
     """
+    # Extract valid function names
     f_names = sorted([f.name for f in funcs])
+
+    # Prefix expected by the model
     output = "fn_"
+
+    # Build LLM instructions
     instructions = get_func_instructions(funcs, prompt)
+
+    # Load token vocabulary
     vocab: Any = load_vocab(llm)
 
-    def encode_and_get_logits() -> tuple[Any, list[float]]:
+    def render():
+        """Update UI with current partial output."""
+        if live:
+            live.update(render_panel(prompt, output, None))
+
+    def encode_and_get_logits():
         """
-        Re-encode the current context and return fresh logits.
-
-        Concatenates the system instructions with the partially built
-        function name so the model scores the next token in context.
-
-        Returns:
-            A tuple of (input_ids, logits) where input_ids is the list
-            of token IDs for the full context and logits is a 1-D tensor
-            of raw scores over the entire vocabulary.
+        Encode current sequence and retrieve logits
+        for next-token prediction.
         """
         ids = llm.encode(instructions + output).tolist()[0]
         return ids, llm.get_logits_from_input_ids(ids)
 
-    def print_char(char: str) -> None:
-        """Print current output character by character in red."""
-        print(
-            f"\r{C.RED}\"name\": {output}{C.END}\033[K",
-            end='', flush=True
-        )
-        time.sleep(0.1)
+    # Initial render (fn_)
+    render()
 
-    # Get initial logits
     input_ids, logits = encode_and_get_logits()
 
-    # Show initial prefix
-    print(f"\r{C.RED}\"name\": \"{output}\"{C.END}\033[K", end='', flush=True)
-
     while output not in f_names:
+        # Filter functions matching current prefix
         ft_list = [f for f in f_names if f.startswith(output)]
 
+        # If only one match remains → autocomplete
         if len(ft_list) == 1:
-            # Animate remaining characters one by one
             for char in ft_list[0][len(output):]:
                 output += char
-                print_char(char)
+                render()
+                time.sleep(0.05)
             break
 
+        # No valid continuation → fail
         if not ft_list:
             return ""
 
+        # Collect valid next tokens
         valid_tokens = []
         for s, tid in vocab.items():
-            token_str = s[1:] if s.startswith('Ġ') else s
+            token_str = s[1:] if s.startswith("Ġ") else s
+
             if token_str and any(
                 f.startswith(output + token_str) for f in f_names
             ):
@@ -113,14 +115,28 @@ def generate_function_name(
         if not valid_tokens:
             return ""
 
-        token_id, token_str = max(valid_tokens, key=lambda x: logits[x[0]])
+        # Select best token based on logits
+        token_id, token_str = max(
+            valid_tokens, key=lambda x: logits[x[0]]
+        )
 
-        # Animate token character by character
+        # Append token character by character (typing effect)
         for char in token_str:
             output += char
-            print_char(char)
+            render()
+            time.sleep(0.05)
 
+        # Recompute logits for new sequence
         input_ids, logits = encode_and_get_logits()
-    time.sleep(.5)
-    print(f"\r{C.GREEN}\"name\": \"{output}\"{C.END}\033[K")
+
+    # Final render (highlight in green)
+    if live:
+        live.update(
+            render_panel(
+                prompt,
+                f"[bold green]{output}[/bold green]",
+                None
+            )
+        )
+
     return output

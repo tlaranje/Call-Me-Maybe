@@ -1,92 +1,142 @@
-from src.constants import Colors as C
-from pydantic import ValidationError
-from llm_sdk import Small_LLM_Model
-from src.function_selector import generate_function_name
 from src.param_generator import generate_parameters, get_params_instructions
 from src.validation_models import load_and_validate, FunctionDefinition
+from src.function_selector import generate_function_name
+from src.utils import render_panel
 from src.get_args import get_args
+
+from rich.console import Console
+from rich.panel import Panel
+from rich.live import Live
+from rich import print
+
+from pydantic import ValidationError
+from llm_sdk import Small_LLM_Model
+from typing import Any
 import json
 import os
-from typing import Any
 
 
 def write_results(file: str, res: list[dict[str, Any]]) -> None:
     """
-    Write the results to a JSON file.
+    Write results to a JSON file.
+
+    Ensures the output directory exists and saves the results
+    with indentation for readability.
 
     Args:
-        file (str): Path to the output file.
-        res (list): List of results to write.
+        file (str): Path to the output JSON file.
+        res (list[dict[str, Any]]): List of results.
+
+    Returns:
+        None
     """
+    # Ensure output directory exists
     os.makedirs("data/output", exist_ok=True)
+
+    # Write formatted JSON
     with open(file, "w") as fd:
         fd.write(json.dumps(res, indent=4))
 
 
 def main() -> None:
     """
-    Entry point of the function calling pipeline.
+    Entry point for the function-calling pipeline.
 
-    Loads the LLM, reads the input prompts and function definitions,
-    and for each prompt selects the correct function using constrained
-    decoding, then extracts its arguments. Results are written
-    incrementally to the output JSON file after each prompt.
+    This function orchestrates the full workflow:
+    - Loads and validates input data
+    - Generates function names using the LLM
+    - Generates parameters for each function
+    - Streams progress to the terminal using Rich
+    - Saves results incrementally to a JSON file
+
+    Args:
+        None
+
+    Returns:
+        None
     """
+    # Accumulates all results across prompts
     final_json: list[dict[str, Any]] = []
 
     try:
+        # Initialize model and load input data
         llm = Small_LLM_Model()
         args = get_args()
         data = load_and_validate(args)
-        print()
 
+        print()
         print(
-            f"{C.BLUE}=== Generating functions "
-            f"names and parameters ==={C.END}\n"
+            "[bold blue]=== Generating functions "
+            "names and parameters ===[/bold blue]\n"
         )
 
         functions = data['functions']
-        for p in data['prompts']:
-            print(f"{C.GREEN}\"prompt\": \"{p.prompt}\"{C.END}")
-            # Generate the best matching function name for the prompt
-            func_name = generate_function_name(llm, functions, p.prompt)
+        console = Console()
 
-            # Find the full function definition from the list
-            func: FunctionDefinition | None = next(
-                (f for f in functions if f.name == func_name), None
-            )
+        # Live UI for streaming updates (animation)
+        with Live(console=console, refresh_per_second=20) as live:
+            for p in data['prompts']:
 
-            if func is None:
-                raise ValueError(f"Function '{func_name}' not found")
+                # 1. Initial state
+                live.update(render_panel(p.prompt, None, None))
 
-            # Build the base instruction prompt for parameter extraction
-            instructions = get_params_instructions(func, p.prompt)
-
-            # Generate parameters only if the function expects them
-            params = {}
-            if func and func.parameters:
-                params = generate_parameters(
-                    llm, func, p.prompt, instructions
+                # 2. Function selection
+                func_name = generate_function_name(
+                    llm, functions, p.prompt, live
                 )
 
-            # Append the result for this prompt to the output list
-            final_json.append({
-                "prompt": p.prompt,
-                "name": func_name,
-                "parameters": params
-            })
+                live.update(render_panel(p.prompt, func_name, None))
 
-            # Write incrementally so partial results are saved on crash
-            write_results(args['output'], final_json)
-            print()
+                # 3. Resolve function definition
+                func: FunctionDefinition | None = next(
+                    (f for f in functions if f.name == func_name), None
+                )
+
+                if func is None:
+                    raise ValueError(f"Function '{func_name}' not found")
+
+                # 4. Parameter generation
+                instructions = get_params_instructions(func, p.prompt)
+
+                params: dict[str, Any] = {}
+
+                if func.parameters:
+                    params = generate_parameters(
+                        llm, func, p.prompt, instructions, live
+                    )
+
+                live.update(render_panel(p.prompt, func_name, params))
+
+                # 5. Save and write result
+                final_json.append({
+                    "prompt": p.prompt,
+                    "name": func_name,
+                    "parameters": params
+                })
+
+                write_results(args['output'], final_json)
+
+                # Print stable result below animated panel
+                live.console.print(
+                    render_panel(p.prompt, func_name, params)
+                )
 
     except ValidationError as e:
+        # Handle structured validation errors
         for error in e.errors():
             msg = error['msg'].removeprefix("Value error, ")
-            print(f"{C.RED}{msg}{C.END}")
+            print(Panel(
+                f"[bold red]{msg}[/bold red]",
+                title="[bold white]Validation Error[/bold white]"
+            ))
         exit()
+
     except Exception as e:
-        print(f"{C.RED}{e}{C.END}")
+        # Catch-all for unexpected runtime errors
+        print(Panel(
+            f"[bold red]{e}[/bold red]",
+            title="[bold white]Error[/bold white]"
+        ))
         exit()
 
 

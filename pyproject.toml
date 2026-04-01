@@ -3,7 +3,7 @@ name = "Call-Me-Maybe"
 version = "0.1.0"
 description = "tlaranje's call_me_maybe project (school 42)"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "fire>=0.7.1",
     "flake8>=7.3.0",
@@ -13,7 +13,8 @@ dependencies = [
     "pytest>=9.0.2",
     "torch>=2.10.0",
     "transformers>=5.0.0",
-    "accelerate>=1.10.0"
+    "accelerate>=1.10.0",
+    "rich>=13.7.0"
 ]
 
 [tool.mypy]

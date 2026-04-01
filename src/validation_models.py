@@ -7,23 +7,21 @@ class FunctionParameter(BaseModel):
     """
     Represent a single parameter in a function definition.
 
-    Attributes:
-        type (str): The expected type of the parameter.
+    Args:
+        type (str): Expected type of the parameter.
     """
     type: str
 
 
 class FunctionDefinition(BaseModel):
     """
-    Represent a function definition with its name, description,
-    parameters, and return type.
+    Represent a function definition.
 
-    Attributes:
-        name (str): The function name.
-        description (str): A human-readable description of the function.
-        parameters (dict[str, FunctionParameter]): Mapping of parameter names
-        to their types.
-        returns (FunctionParameter): The return type definition.
+    Args:
+        name (str): Function name.
+        description (str): Human-readable description.
+        parameters (dict[str, FunctionParameter]): Function parameters.
+        returns (FunctionParameter): Return type definition.
     """
     name: str
     description: str
@@ -34,19 +32,22 @@ class FunctionDefinition(BaseModel):
     @classmethod
     def check_fields(cls, values: Any) -> Any:
         """
-        Validate that all required fields exist and have correct types.
+        Perform custom validation before model parsing.
+
+        Ensures required fields exist and have the correct structure.
 
         Args:
-            values (Any): Raw values before validation.
+            values (Any): Raw input data.
 
         Returns:
             Any: Validated values.
 
         Raises:
-            ValueError: If any required field is missing or incorrectly type.
+            ValueError: If validation fails.
         """
         errors = []
 
+        # Validate name
         if values.get('name') is None:
             errors.append("'name' field is missing.")
         elif not isinstance(values.get('name'), str):
@@ -55,6 +56,7 @@ class FunctionDefinition(BaseModel):
                 f"{type(values.get('name')).__name__}."
             )
 
+        # Validate description
         if values.get('description') is None:
             errors.append("'description' field is missing.")
         elif not isinstance(values.get('description'), str):
@@ -63,6 +65,7 @@ class FunctionDefinition(BaseModel):
                 f"{type(values.get('description')).__name__}."
             )
 
+        # Validate parameters
         if values.get('parameters') is None:
             errors.append("'parameters' field is missing.")
         else:
@@ -77,11 +80,13 @@ class FunctionDefinition(BaseModel):
                         f"{type(value['type']).__name__}."
                     )
 
+        # Validate returns
         if values.get('returns') is None:
             errors.append("'returns' field is missing.")
         elif 'type' not in values.get('returns'):
             errors.append("'returns' must have a 'type' field.")
 
+        # Raise aggregated errors
         if errors:
             raise ValueError("\n    ".join(errors))
 
@@ -90,10 +95,10 @@ class FunctionDefinition(BaseModel):
 
 class Prompt(BaseModel):
     """
-    Represent a single natural-language prompt.
+    Represent a single user prompt.
 
-    Attributes:
-        prompt (str): The user-provided prompt text.
+    Args:
+        prompt (str): Natural language input.
     """
     prompt: str
 
@@ -101,16 +106,16 @@ class Prompt(BaseModel):
     @classmethod
     def check_fields(cls, values: Any) -> Any:
         """
-        Validate that the prompt field exists and is a string.
+        Validate prompt structure.
 
         Args:
-            values (Any): Raw values before validation.
+            values (Any): Raw input data.
 
         Returns:
             Any: Validated values.
 
         Raises:
-            ValueError: If the prompt is missing or incorrectly typed.
+            ValueError: If validation fails.
         """
         errors = []
 
@@ -130,25 +135,30 @@ class Prompt(BaseModel):
 
 def load_and_validate(args: dict[str, str]) -> dict[str, list[Any]]:
     """
-    Load input JSON files and validate them using Pydantic models.
+    Load and validate prompts and function definitions.
+
+    Parses JSON files and validates them using Pydantic models,
+    collecting all validation errors before raising.
 
     Args:
-        args (dict[str, str]): Dictionary containing paths for:
-            - "input": prompts file
-            - "functions": function definitions file
+        args (dict[str, str]): Dictionary with:
+            - "input": prompts file path
+            - "functions": function definitions file path
 
     Returns:
-        dict[str, list]: A dictionary containing:
-            - "prompts": list of validated Prompt objects
-            - "functions": list of validated FunctionDefinition objects
+        dict[str, list[Any]]: Validated data containing:
+            - "prompts": list of Prompt objects
+            - "functions": list of FunctionDefinition objects
 
     Raises:
-        ValueError: If any validation errors are found in the input files.
+        ValueError: If validation errors are found.
     """
     prompt_errors = []
     fn_errors = []
 
     prompts = []
+
+    # Validate prompts
     for p in load_json(args['input']):
         try:
             prompts.append(Prompt(**p))
@@ -156,9 +166,10 @@ def load_and_validate(args: dict[str, str]) -> dict[str, list[Any]]:
             for error in e.errors():
                 msg = error['msg'].removeprefix("Value error, ")
                 prompt_errors.append(f"    {msg}")
-    prompt_errors.append("")
 
     functions = []
+
+    # Validate functions
     for fn in load_json(args['functions']):
         try:
             functions.append(FunctionDefinition(**fn))
@@ -167,15 +178,19 @@ def load_and_validate(args: dict[str, str]) -> dict[str, list[Any]]:
                 msg = error['msg'].removeprefix("Value error, ")
                 fn_errors.append(f"    {msg}")
 
+    # Aggregate errors
     errors = []
+
     if prompt_errors:
         errors.append("Errors in function_calling_tests.json:")
         errors.extend(prompt_errors)
+
     if fn_errors:
         errors.append("Errors in functions_definition.json:")
         errors.extend(fn_errors)
 
-    if len(errors) > 2:
+    # Raise only if there are actual errors
+    if errors:
         raise ValueError("\n".join(errors))
 
     return {"prompts": prompts, "functions": functions}

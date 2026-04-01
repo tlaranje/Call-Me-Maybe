@@ -6,11 +6,12 @@
 #    By: tlaranje <tlaranje@student.42porto.com>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/02/26 12:06:51 by tlaranje          #+#    #+#              #
-#    Updated: 2026/02/26 12:06:52 by tlaranje         ###   ########.fr        #
+#    Updated: 2026/04/01 11:18:28 by tlaranje         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 # === VARIABLES ===
+SHELL			:= /bin/bash
 SETUP_ENV       := . ./setup_env.sh &&
 DEFAULT_INPUT   := data/input/function_calling_tests.json
 DEFAULT_OUTPUT  := data/output/function_calling_result.json
@@ -21,11 +22,11 @@ FIND            := find
 
 # === BUILD TARGETS ===
 install:
-	@clear && $(SETUP_ENV) uv sync
+	@clear && $(SETUP_ENV) uv sync --active
 
 run:
 	@clear && \
-	$(SETUP_ENV) uv run python -m src \
+	$(SETUP_ENV) uv run --active python -m src \
 	--input $(DEFAULT_INPUT) \
 	--output $(DEFAULT_OUTPUT) $(ARGS)
 
