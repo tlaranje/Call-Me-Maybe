@@ -1,6 +1,7 @@
 from src.validation_models import FunctionDefinition as FuncDef
 from llm_sdk import Small_LLM_Model as LLM_Model
 from src.utils import render_panel, load_vocab
+from rich.live import Live
 from typing import Any
 import time
 
@@ -38,7 +39,7 @@ def generate_function_name(
     llm: LLM_Model,
     funcs: list[FuncDef],
     prompt: str,
-    live=None
+    live: Live | None = None
 ) -> str:
     """
     Generate the most appropriate function name for a given prompt.
@@ -68,12 +69,12 @@ def generate_function_name(
     # Load token vocabulary
     vocab: Any = load_vocab(llm)
 
-    def render():
+    def render() -> None:
         """Update UI with current partial output."""
         if live:
             live.update(render_panel(prompt, output, None))
 
-    def encode_and_get_logits():
+    def encode_and_get_logits() -> tuple[int, list[float]]:
         """
         Encode current sequence and retrieve logits
         for next-token prediction.

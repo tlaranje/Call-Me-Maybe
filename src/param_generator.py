@@ -2,6 +2,7 @@ from src.validation_models import FunctionDefinition as FuncDef
 from llm_sdk import Small_LLM_Model as LLM_Model
 from src.utils import render_panel, load_vocab
 from typing import Any, Callable
+from rich.live import Live
 import math
 import time
 
@@ -146,7 +147,7 @@ def generate_parameters(
     func: FuncDef,
     prompt: str,
     instructions: str,
-    live=None
+    live: Live | None = None
 ) -> dict[str, Any]:
     """
     Generate all parameters for a selected function.
@@ -166,7 +167,7 @@ def generate_parameters(
     """
     res: dict[str, Any] = {}
 
-    def render(current_param: str = "", current_value: str = ""):
+    def render(current_param: str = "", current_value: str = "") -> None:
         """
         Update UI with current generation state.
         """

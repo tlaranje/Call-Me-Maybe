@@ -52,15 +52,15 @@ fclean: clean
 	rm -rf $$SGOINFRE/.venv $$SGOINFRE/.uv_cache $$SGOINFRE/.llm'
 
 lint:
-	@clear && $(SETUP_ENV) uv run flake8 .
-	@$(SETUP_ENV) uv run mypy . --warn-return-any \
+	@clear && $(SETUP_ENV) uv run --active flake8 .
+	@$(SETUP_ENV) uv run --active mypy . --warn-return-any \
 	    --warn-unused-ignores \
 	    --ignore-missing-imports \
 	    --disallow-untyped-defs \
 	    --check-untyped-defs
 
 lint-strict:
-	@clear && $(SETUP_ENV) uv run flake8 .
-	@$(SETUP_ENV) uv run mypy . --strict
+	@clear && $(SETUP_ENV) uv run --active flake8 .
+	@$(SETUP_ENV) uv run --active mypy . --strict
 
 .PHONY: install run debug clean lint lint-strict

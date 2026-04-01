@@ -7,7 +7,7 @@ import json
 def render_panel(
     prompt: str,
     func_name: str | None = None,
-    params: dict | None = None
+    params: dict[Any, Any] | None = None
 ) -> Panel:
     """
     Create a formatted Rich panel displaying the current pipeline state.
