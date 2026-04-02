@@ -6,34 +6,50 @@
 #    By: tlaranje <tlaranje@student.42porto.com>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/02/26 12:06:51 by tlaranje          #+#    #+#              #
-#    Updated: 2026/04/01 11:18:28 by tlaranje         ###   ########.fr        #
+#    Updated: 2026/04/02 16:03:21 by tlaranje         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 # === VARIABLES ===
-SHELL			:= /bin/bash
-SETUP_ENV       := . ./setup_env.sh &&
-DEFAULT_INPUT   := data/input/function_calling_tests.json
-DEFAULT_OUTPUT  := data/output/function_calling_result.json
+DEFAULT_INPUT		:= data/input/function_calling_tests.json
+DEFAULT_DEFINITION	:= data/input/functions_definition.json
+DEFAULT_OUTPUT		:= data/output/function_calling_result.json
 
-# === COMMANDS ===
-RM              := rm -rf
-FIND            := find
+RM					:= rm -rf
+FIND				:= find
+
+# === DIRENV SETUP ===
+DIRENV_BIN := $(HOME)/.local/bin/direnv
+
+define SETUP_DIRENV
+if ! command -v direnv >/dev/null 2>&1; then \
+	echo "Installing direnv..."; \
+	curl -sfL https://direnv.net/install.sh | bash; \
+	export PATH="$(HOME)/.local/bin:$$PATH"; \
+fi; \
+direnv allow >/dev/null 2>&1 || true
+endef
+
+CLEAR := $(SETUP_DIRENV) && clear
 
 # === BUILD TARGETS ===
 install:
-	@clear && $(SETUP_ENV) uv sync --active
+	@$(CLEAR) && uv sync
+
+INPUT ?= $(DEFAULT_INPUT)
+OUTPUT ?= $(DEFAULT_OUTPUT)
+FUNCS ?= $(DEFAULT_DEFINITION)
 
 run:
-	@clear && \
-	$(SETUP_ENV) uv run --active python -m src \
-	--input $(DEFAULT_INPUT) \
-	--output $(DEFAULT_OUTPUT) $(ARGS)
+	@$(CLEAR) && uv run python -m src \
+	--input $(INPUT) \
+	--functions_definition $(FUNCS) \
+	--output $(OUTPUT)
 
 debug:
-	@clear && \
-	$(SETUP_ENV) uv run python -m pdb -m src \
+	@$(CLEAR) && uv run python -m pdb -m src \
 	--input $(DEFAULT_INPUT) \
+	--functions_definition $(DEFAULT_DEFINITION) \
 	--output $(DEFAULT_OUTPUT) $(ARGS)
 
 clean:
@@ -45,22 +61,22 @@ clean:
 	@$(FIND) . -type f -name "*.pyc" -delete
 	@$(FIND) . -type f -name "*.pyo" -delete
 
-
 fclean: clean
 	@echo "Removing sgoinfre cache..."
-	@bash -c '. ./setup_env.sh && \
-	rm -rf $$SGOINFRE/.venv $$SGOINFRE/.uv_cache $$SGOINFRE/.llm'
+	@rm -rf $(HOME)/sgoinfre/Call-Me-Maybe/.venv \
+	        $(HOME)/sgoinfre/Call-Me-Maybe/.uv_cache \
+	        $(HOME)/sgoinfre/Call-Me-Maybe/.llm
 
 lint:
-	@clear && $(SETUP_ENV) uv run --active flake8 .
-	@$(SETUP_ENV) uv run --active mypy . --warn-return-any \
+	@clear && uv run flake8 .
+	@uv run mypy . --warn-return-any \
 	    --warn-unused-ignores \
 	    --ignore-missing-imports \
 	    --disallow-untyped-defs \
 	    --check-untyped-defs
 
 lint-strict:
-	@clear && $(SETUP_ENV) uv run --active flake8 .
-	@$(SETUP_ENV) uv run --active mypy . --strict
+	@clear && uv run flake8 .
+	@uv run mypy . --strict
 
 .PHONY: install run debug clean lint lint-strict

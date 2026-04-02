@@ -1,8 +1,7 @@
-from src.param_generator import generate_parameters, get_params_instructions
-from src.validation_models import load_and_validate, FunctionDefinition
-from src.function_selector import generate_function_name
+from src.models import load_and_validate, FunctionDefinition
+from src.generators import FunctionCaller
 from src.utils import render_panel
-from src.get_args import get_args
+from src.parse_args import parse_args
 
 from rich.console import Console
 from rich.panel import Panel
@@ -61,7 +60,7 @@ def main() -> None:
     try:
         # Initialize model and load input data
         llm = Small_LLM_Model()
-        args = get_args()
+        args = parse_args()
         data = load_and_validate(args)
 
         print()
@@ -76,12 +75,12 @@ def main() -> None:
         # Live UI for streaming updates (animation)
         with Live(console=console, refresh_per_second=20) as live:
             for p in data['prompts']:
-
+                caller = FunctionCaller()
                 # 1. Initial state
                 live.update(render_panel(p.prompt, None, None))
 
                 # 2. Function selection
-                func_name = generate_function_name(
+                func_name = caller.function_generator.generate_function_name(
                     llm, functions, p.prompt, live
                 )
 
@@ -96,12 +95,12 @@ def main() -> None:
                     raise ValueError(f"Function '{func_name}' not found")
 
                 # 4. Parameter generation
-                instructions = get_params_instructions(func, p.prompt)
+                instructions = caller.get_params_instructions(func, p.prompt)
 
                 params: dict[str, Any] = {}
 
                 if func.parameters:
-                    params = generate_parameters(
+                    params = caller.generate_parameters(
                         llm, func, p.prompt, instructions, live
                     )
 
@@ -121,7 +120,7 @@ def main() -> None:
                 live.console.print(
                     render_panel(p.prompt, func_name, params)
                 )
-
+                break
     except ValidationError as e:
         # Handle structured validation errors
         for error in e.errors():

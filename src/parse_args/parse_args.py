@@ -1,7 +1,7 @@
 import argparse
 
 
-def get_args() -> dict[str, str]:
+def parse_args() -> dict[str, str]:
     """
     Parse command-line arguments and return resolved file paths.
 

@@ -1,0 +1,54 @@
+from typing import TYPE_CHECKING
+from src.utils import load_vocab
+import math
+
+if TYPE_CHECKING:
+    from llm_sdk import Small_LLM_Model as LLM_Model
+
+
+class Float:
+    def generate(self, llm: LLM_Model, ins: str) -> float:
+        """
+        Generate a numeric parameter using constrained decoding.
+
+        Builds a number token-by-token, only accepting tokens that
+        keep the string parsable as a valid finite float.
+
+        Args:
+            llm (LLM_Model): Language model used for generation.
+            ins (str): Instruction prompt.
+            p_name (str): Parameter name.
+
+        Returns:
+            dict[str, float]: Generated numeric value mapped to parameter name.
+        """
+        curr_value = ""
+        curr_token = ""
+
+        # Initial encoding
+        input_ids = llm.encode(ins + curr_value).tolist()[0]
+        logits = llm.get_logits_from_input_ids(input_ids)
+        vocab = load_vocab(llm)
+
+        while curr_token != 'Ċ':
+            # Select highest probability token (greedy decoding)
+            curr_token = max(vocab.keys(), key=lambda s: logits[vocab[s]])
+
+            try:
+                # Check if token keeps valid float
+                value = float(curr_value + curr_token)
+
+                if math.isfinite(value):
+                    # Accept token and update context
+                    curr_value += curr_token
+                    input_ids = llm.encode(ins + curr_value).tolist()[0]
+                    logits = llm.get_logits_from_input_ids(input_ids)
+                else:
+                    # Reject non-finite numbers
+                    logits[vocab[curr_token]] = -math.inf
+
+            except ValueError:
+                # Reject invalid float sequences
+                logits[vocab[curr_token]] = -math.inf
+
+        return float(curr_value)
