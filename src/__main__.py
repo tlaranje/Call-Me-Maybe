@@ -1,6 +1,6 @@
 from src.models import load_and_validate, FunctionDefinition
+from src.utils import animate_field, render_panel
 from src.generators import FunctionCaller
-from src.utils import render_panel
 from src.parse_args import parse_args
 
 from rich.console import Console
@@ -76,23 +76,30 @@ def main() -> None:
         with Live(console=console, refresh_per_second=20) as live:
             for p in data['prompts']:
                 caller = FunctionCaller()
-                # 1. Initial state
-                live.update(render_panel(p.prompt, None, None))
 
                 # 2. Function selection
-                func_name = caller.function_generator.generate_function_name(
-                    llm, functions, p.prompt, live
+                func_name = caller.function_generator.generate(
+                    llm, functions, p.prompt
                 )
-
-                live.update(render_panel(p.prompt, func_name, None))
-
+                animate_field(
+                    live,
+                    p.prompt,
+                    func_name,
+                    params=None,
+                    field="func",
+                    new_text=func_name
+                )
                 # 3. Resolve function definition
                 func: FunctionDefinition | None = next(
                     (f for f in functions if f.name == func_name), None
                 )
 
                 if func is None:
-                    raise ValueError(f"Function '{func_name}' not found")
+                    live.console.print(
+                        f"[bold red]Erro:[/bold red] Função "
+                        f"'{func_name}' não encontrada."
+                    )
+                    continue
 
                 # 4. Parameter generation
                 instructions = caller.get_params_instructions(func, p.prompt)
@@ -101,9 +108,17 @@ def main() -> None:
 
                 if func.parameters:
                     params = caller.generate_parameters(
-                        llm, func, p.prompt, instructions, live
+                        llm, func, p.prompt, instructions
                     )
-
+                params_text = json.dumps(params, ensure_ascii=False)
+                animate_field(
+                    live,
+                    prompt=p.prompt,
+                    func_name=func_name,
+                    params={},
+                    field="params",
+                    new_text=params_text
+                )
                 # live.update(render_panel(p.prompt, func_name, params))
 
                 # 5. Save and write result
@@ -116,11 +131,9 @@ def main() -> None:
                 write_results(args['output'], final_json)
 
                 # Print stable result below animated panel
-                live.update("")
                 live.console.print(
-                    render_panel(p.prompt, func_name, params)
+                    render_panel(p.prompt, func_name, params_text)
                 )
-                break
     except ValidationError as e:
         # Handle structured validation errors
         for error in e.errors():
@@ -133,7 +146,7 @@ def main() -> None:
 
     except Exception as e:
         # Catch-all for unexpected runtime errors
-        print(Panel(
+        print(Panel.fit(
             f"[bold red]{e}[/bold red]",
             title="[bold white]Error[/bold white]"
         ))

@@ -1,13 +1,10 @@
 from .types import Boolean, String, Integer, Float
 from .function_generator import FunctionGenerator
-from src.utils import render_panel
 from typing import TYPE_CHECKING, Any
-import time
 
 if TYPE_CHECKING:
     from llm_sdk import Small_LLM_Model as LLM_Model
     from src.models import FunctionDefinition
-    from rich.Live import Live
 
 
 class FunctionCaller:
@@ -28,7 +25,6 @@ class FunctionCaller:
         func: FunctionDefinition,
         prompt: str,
         instructions: str,
-        live: Live | None = None
     ) -> dict[str, Any]:
         """
         Generate all parameters for a selected function.
@@ -48,18 +44,6 @@ class FunctionCaller:
         """
         res: dict[str, Any] = {}
 
-        def render(current_param: str = "", current_value: str = "") -> None:
-            """
-            Update UI with current generation state.
-            """
-            if live:
-                params_display = res.copy()
-
-                if current_param:
-                    params_display[current_param] = current_value or "..."
-
-                live.update(render_panel(prompt, func.name, params_display))
-
         for param_name, param in func.parameters.items():
             # Append parameter prefix to instruction
             instructions += f"{param_name}="
@@ -72,23 +56,12 @@ class FunctionCaller:
                     f"(parameter '{param_name}' of '{func.name}')"
                 )
 
-            # Initial state for this parameter
-            render(param_name, "...")
-
             # Generate value using appropriate generator
             value = generator.generate(model, instructions)
             res[param_name] = value
 
-            generated = str(value)
-            displayed = ""
-            # Typing animation
-            for char in generated:
-                displayed += char
-                render(param_name, displayed)
-                time.sleep(0.05)
-
             # Append generated value to instruction context
-            instructions += f"{generated}\n"
+            instructions += f"{str(value)}\n"
 
         return res
 

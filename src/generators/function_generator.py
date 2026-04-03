@@ -1,9 +1,7 @@
 from src.models import FunctionDefinition
 from llm_sdk import Small_LLM_Model as LLM_Model
-from src.utils import render_panel, load_vocab
-from rich.live import Live
+from src.utils import load_vocab
 from typing import Any
-import time
 
 
 class FunctionGenerator:
@@ -41,101 +39,112 @@ class FunctionGenerator:
             "<|im_start|>assistant\n"
         )
 
-    def generate_function_name(
+    def generate(
         self,
         llm: LLM_Model,
         funcs: list[FunctionDefinition],
-        prompt: str,
-        live: Live | None = None
+        prompt: str
     ) -> str:
         """
         Generate the most appropriate function name for a given prompt.
 
-        Uses constrained token-by-token generation to ensure the output
-        matches one of the available function names. Optionally streams
-        progress to a Rich Live panel.
+        This method performs constrained, token-by-token generation to
+        ensure the output always corresponds to one of the available
+        function names. The model is guided through a restricted decoding
+        process that only allows continuations matching valid function-name
+        prefixes.
 
         Args:
-            llm (LLM_Model): Language model used for generation.
-            funcs (list[FuncDef]): List of available functions.
-            prompt (str): User input prompt.
-            live (optional): Rich Live instance for streaming UI updates.
+            llm (LLM_Model):
+                The language model responsible for next token prediction.
+            funcs (list[FunctionDefinition]):
+                The list of available function definitions from which the
+                model must select.
+            prompt (str):
+                The natural‑language user request that determines which
+                function should be chosen.
 
         Returns:
-            str: Selected function name.
-            Returns empty string if no match is found.
+            str:
+                The selected function name. Returns an empty string if the
+                model cannot produce a valid continuation or confidence is
+                insufficient.
         """
-        # Extract valid function names
+        # List of valid function names (sorted for deterministic behavior)
         f_names = sorted([f.name for f in funcs])
 
-        # Prefix expected by the model
+        # All function names start with this prefix
         output = "fn_"
 
-        # Build LLM instructions
+        # Build the instruction prompt for the LLM
         instructions = self.get_func_instructions(funcs, prompt)
 
-        # Load token vocabulary
+        # Vocabulary: token string → token ID
         vocab: Any = load_vocab(llm)
 
-        def render() -> None:
-            """Update UI with current partial output."""
-            if live:
-                live.update(render_panel(prompt, output, None))
-
-        def encode_and_get_logits() -> tuple[int, list[float]]:
-            """
-            Encode current sequence and retrieve logits
-            for next-token prediction.
-            """
+        def encode_and_get_logits() -> tuple[list[int], list[float]]:
+            """Encode current text and get logits for the next token."""
             ids = llm.encode(instructions + output).tolist()[0]
             return ids, llm.get_logits_from_input_ids(ids)
 
-        # Initial render (fn_)
-        render()
-
+        # Logits for the initial prefix "fn_"
         input_ids, logits = encode_and_get_logits()
 
+        # --- Initial confidence check -------------------------------------
+        # Check if the model is confident about ANY valid next character.
+        # If not, the prompt likely doesn't match any function.
+        initial_scores = []
+        for f in f_names:
+            next_char = f[len("fn_")]  # first letter after "fn_"
+            for s, tid in vocab.items():
+                token_str = s[1:] if s.startswith("Ġ") else s
+                if token_str == next_char:
+                    initial_scores.append(logits[tid])
+
+        if not initial_scores or max(initial_scores) < 5:
+            return ""
+
+        # --- Main generation loop -----------------------------------------
+        # Continue until the output exactly matches a function name.
         while output not in f_names:
-            # Filter functions matching current prefix
+
+            # Keep only names that still match the current prefix
             ft_list = [f for f in f_names if f.startswith(output)]
 
-            # If only one match remains → autocomplete
+            # Only one possible function → auto-complete
             if len(ft_list) == 1:
-                for char in ft_list[0][len(output):]:
-                    output += char
-                    render()
-                    time.sleep(0.05)
-                break
+                output += ft_list[0][len(output):]
+                return output
 
-            # No valid continuation → fail
+            # No possible function → invalid path
             if not ft_list:
                 return ""
 
-            # Collect valid next tokens
+            # Collect tokens that keep the prefix valid
             valid_tokens = []
             for s, tid in vocab.items():
                 token_str = s[1:] if s.startswith("Ġ") else s
 
+                # Valid if it keeps the prefix matching some function
                 if token_str and any(
                     f.startswith(output + token_str) for f in f_names
                 ):
                     valid_tokens.append((tid, token_str))
 
+            # No valid continuation
             if not valid_tokens:
                 return ""
 
-            # Select best token based on logits
+            # Choose the token with the highest logit among valid options
             token_id, token_str = max(
                 valid_tokens, key=lambda x: logits[x[0]]
             )
 
-            # Append token character by character (typing effect)
-            for char in token_str:
-                output += char
-                render()
-                time.sleep(0.05)
+            # Append token to the output
+            output += token_str
 
-            # Recompute logits for new sequence
+            # Recompute logits for the updated sequence
             input_ids, logits = encode_and_get_logits()
 
+        # Completed valid function name
         return output

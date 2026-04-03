@@ -30,7 +30,6 @@ class String:
         vocab = load_vocab(llm)
 
         while curr_token != 'Ċ':
-            print(curr_token)
             # Greedy token selection
             raw_token = max(vocab.keys(), key=lambda s: logits[vocab[s]])
 

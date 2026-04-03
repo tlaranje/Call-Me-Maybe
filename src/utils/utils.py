@@ -1,36 +1,45 @@
 from llm_sdk import Small_LLM_Model as LLM_Model
 from rich.markup import escape
 from rich.panel import Panel
+from rich.live import Live
+from time import sleep
 from typing import Any
 import json
 
 
+def animate_field(
+    live: Live,
+    prompt: str,
+    func_name: str,
+    params: dict | None,
+    field: str,
+    new_text: str,
+) -> None:
+    """
+    Animate a specific field (func_name or params) letter by letter.
+    """
+    curr = ""
+
+    for char in new_text:
+        curr += char
+
+        if field == "func":
+            live.update(render_panel(prompt, curr, None))
+        else:
+            live.update(render_panel(prompt, func_name, curr))
+        sleep(0.1)
+
+
 def render_panel(
     prompt: str,
-    func_name: str | None = None,
-    params: dict[Any, Any] | None = None
+    func_name: str,
+    params: str | None = None
 ) -> Panel:
-    """
-    Create a formatted Rich panel displaying the current pipeline state.
+    assert func_name is not None
 
-    Args:
-        prompt (str): User input prompt.
-        func_name (str | None): Generated function name.
-        params (dict | None): Generated parameters.
-
-    Returns:
-        Panel: Configured Rich Panel ready for rendering.
-    """
     safe_prompt = escape(prompt)
-
-    safe_func = escape(func_name) if func_name else "..."
-
-    safe_params: Any
-    if isinstance(params, dict):
-        params_str = json.dumps(params, ensure_ascii=False)
-        safe_params = escape(params_str)
-    else:
-        safe_params = "..."
+    safe_func = escape(func_name)
+    safe_params = escape(params) if params else "..."
 
     return Panel.fit(
         f'[bold yellow]Prompt:[/bold yellow] {safe_prompt}\n'
