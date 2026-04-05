@@ -23,8 +23,7 @@ class FunctionCaller:
         self,
         model: LLM_Model,
         func: FunctionDefinition,
-        prompt: str,
-        instructions: str,
+        prompt: str
     ) -> dict[str, Any]:
         """
         Generate all parameters for a selected function.
@@ -44,6 +43,7 @@ class FunctionCaller:
         """
         res: dict[str, Any] = {}
 
+        instructions = self.get_params_instructions(func, prompt)
         for param_name, param in func.parameters.items():
             # Append parameter prefix to instruction
             instructions += f"{param_name}="
@@ -82,7 +82,7 @@ class FunctionCaller:
             "<|im_start|>system\n"
             "Select the arguments for the following function "
             "according to the user's prompt, followed by a \\n character. "
-            f"{str(func)}<|im_end|>\n"
+            f"{str(func)} <|im_end|>\n"
             "<|im_start|>user\n"
             f"{prompt}\n"
             "<|im_end|>\n"

@@ -102,14 +102,11 @@ def main() -> None:
                     continue
 
                 # 4. Parameter generation
-                instructions = caller.get_params_instructions(func, p.prompt)
 
                 params: dict[str, Any] = {}
 
                 if func.parameters:
-                    params = caller.generate_parameters(
-                        llm, func, p.prompt, instructions
-                    )
+                    params = caller.generate_parameters(llm, func, p.prompt)
                 params_text = json.dumps(params, ensure_ascii=False)
                 animate_field(
                     live,
@@ -119,7 +116,6 @@ def main() -> None:
                     field="params",
                     new_text=params_text
                 )
-                # live.update(render_panel(p.prompt, func_name, params))
 
                 # 5. Save and write result
                 final_json.append({
@@ -131,6 +127,7 @@ def main() -> None:
                 write_results(args['output'], final_json)
 
                 # Print stable result below animated panel
+                live.update("")
                 live.console.print(
                     render_panel(p.prompt, func_name, params_text)
                 )

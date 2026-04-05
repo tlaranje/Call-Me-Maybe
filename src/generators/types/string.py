@@ -29,7 +29,8 @@ class String:
         logits = llm.get_logits_from_input_ids(input_ids)
         vocab = load_vocab(llm)
 
-        while curr_token != 'Ċ':
+        STOP_TOKENS = {'Ċ', ',', '"'}
+        while curr_token not in STOP_TOKENS:
             # Greedy token selection
             raw_token = max(vocab.keys(), key=lambda s: logits[vocab[s]])
 
@@ -52,11 +53,12 @@ class String:
                 break
 
             # Append token and continue decoding
-            curr_value += curr_token
+            if curr_token != ',':
+                curr_value += curr_token
             input_ids = llm.encode(ins + curr_value).tolist()[0]
             logits = llm.get_logits_from_input_ids(input_ids)
 
             # Fix escaped characters
-            # curr_value = curr_value.replace('\\\\', '\\')
-
+            curr_value = curr_value.replace('\\\\', '\\')
+            curr_value = curr_value.strip("'\"")
         return curr_value

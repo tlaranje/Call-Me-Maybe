@@ -79,5 +79,20 @@
     "returns": {
       "type": "bool"
     }
+  },
+  {
+  "name": "fn_filter_list",
+  "description": "Filter a list by a given key, optionally reversing the result.",
+  "parameters": {
+    "key": {
+      "type": "string"
+    },
+    "reverse": {
+      "type": "boolean"
+    }
+  },
+  "returns": {
+    "type": "string"
   }
+}
 ]

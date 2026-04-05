@@ -7,6 +7,17 @@ if TYPE_CHECKING:
 
 
 class Float:
+    def _is_valid_prefix(self, s: str) -> bool:
+        """Check if string is a valid numeric prefix (e.g. '-', '-1', '1.')"""
+        if not s:
+            return True
+        try:
+            float(s)
+            return True
+        except ValueError:
+            # Valid prefixes that aren't yet parsable
+            return s in {'-', '.'} or s.startswith('-') and s[1:] in {'', '.'}
+
     def generate(self, llm: LLM_Model, ins: str) -> float:
         """
         Generate a numeric parameter using constrained decoding.
@@ -36,7 +47,8 @@ class Float:
 
             try:
                 # Check if token keeps valid float
-                value = float(curr_value + curr_token)
+                s_value = curr_value + curr_token
+                value = float(s_value)
 
                 if math.isfinite(value):
                     # Accept token and update context
@@ -44,8 +56,12 @@ class Float:
                     input_ids = llm.encode(ins + curr_value).tolist()[0]
                     logits = llm.get_logits_from_input_ids(input_ids)
                 else:
-                    # Reject non-finite numbers
-                    logits[vocab[curr_token]] = -math.inf
+                    if self._is_valid_prefix(s_value):
+                        curr_value = s_value
+                        input_ids = llm.encode(ins + curr_value).tolist()[0]
+                        logits = llm.get_logits_from_input_ids(input_ids)
+                    else:
+                        logits[vocab[curr_token]] = -math.inf
 
             except ValueError:
                 # Reject invalid float sequences

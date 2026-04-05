@@ -8,55 +8,53 @@ if TYPE_CHECKING:
 
 class Boolean:
     def generate(self, llm: LLM_Model, ins: str) -> bool:
-        """
-        Generate a string parameter using constrained decoding.
+        BOOL_TOKENS = {"true", "false"}
 
-        Handles BPE tokens (e.g., 'Ġ' for spaces) and reconstructs
-        a natural string until a newline token is reached.
-
-        Args:
-            llm (LLM_Model): Language model used for generation.
-            ins (str): Instruction prompt.
-            p_name (str): Parameter name.
-
-        Returns:
-            dict[str, str]: Generated string mapped to parameter name.
-        """
-        curr_value = ""
-        curr_token = ""
-
-        input_ids = llm.encode(ins + curr_value).tolist()[0]
+        input_ids = llm.encode(ins).tolist()[0]
         logits = llm.get_logits_from_input_ids(input_ids)
         vocab = load_vocab(llm)
 
-        while curr_token != 'Ċ':
-            # Greedy token selection
-            raw_token = max(vocab.keys(), key=lambda s: logits[vocab[s]])
+        # Mask: keep only tokens that start a valid bool ("true" / "false")
+        masked_logits = {k: -math.inf for k in vocab}
+        for token, idx in vocab.items():
+            clean = token.lstrip('Ġ').lower()
+            if any(b.startswith(clean) for b in BOOL_TOKENS):
+                masked_logits[token] = logits[idx]
 
-            # Handle BPE space prefix
-            if raw_token.startswith('Ġ') and curr_value:
-                curr_token = ' ' + raw_token[1:]
-            else:
-                curr_token = (
-                    raw_token[1:] if raw_token.startswith('Ġ') else raw_token
-                )
+        curr_value = ""
 
-            # Skip empty tokens
-            if not curr_token:
-                logits[vocab[raw_token]] = -math.inf
-                continue
+        while True:
+            raw_token = max(
+                masked_logits.keys(), key=lambda s: masked_logits[s]
+            )
+            clean_token = raw_token.lstrip('Ġ').lower()
 
-            # Stop condition (newline token)
-            if 'Ċ' in curr_token:
-                curr_value += curr_token.split('Ċ')[0]
+            curr_value += clean_token
+
+            # Check if we already have a complete bool
+            if curr_value in BOOL_TOKENS:
                 break
 
-            # Append token and continue decoding
-            curr_value += curr_token
+            # Check if curr_value is still a valid prefix of any bool
+            valid_prefixes = [
+                b for b in BOOL_TOKENS if b.startswith(curr_value)
+            ]
+            if not valid_prefixes:
+                # Backtrack: invalid path, suppress token and retry
+                masked_logits[raw_token] = -math.inf
+                curr_value = curr_value[: -len(clean_token)]
+                continue
+
+            # Re-run logits for next token
             input_ids = llm.encode(ins + curr_value).tolist()[0]
             logits = llm.get_logits_from_input_ids(input_ids)
 
-            # Fix escaped characters
-            curr_value = curr_value.replace('\\\\', '\\')
+            # Re-mask: only tokens that extend a valid bool prefix
+            masked_logits = {k: -math.inf for k in vocab}
+            for token, idx in vocab.items():
+                clean = token.lstrip('Ġ').lower()
+                candidate = curr_value + clean
+                if any(b.startswith(candidate) for b in BOOL_TOKENS):
+                    masked_logits[token] = logits[idx]
 
-        return curr_value
+        return curr_value == "true"

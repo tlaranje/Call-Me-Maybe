@@ -101,7 +101,7 @@ class FunctionGenerator:
                 if token_str == next_char:
                     initial_scores.append(logits[tid])
 
-        if not initial_scores or max(initial_scores) < 5:
+        if not initial_scores or max(initial_scores) < len(funcs):
             return ""
 
         # --- Main generation loop -----------------------------------------
