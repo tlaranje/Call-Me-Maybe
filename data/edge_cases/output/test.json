@@ -1,0 +1,30 @@
+[
+    {
+        "prompt": "Is -2 even?",
+        "name": "fn_is_even",
+        "parameters": {
+            "n": -2.0
+        }
+    },
+    {
+        "prompt": "Is -2e100 even?",
+        "name": "fn_is_even",
+        "parameters": {
+            "n": -2e+100
+        }
+    },
+    {
+        "prompt": "Is -2e-100 even?",
+        "name": "fn_is_even",
+        "parameters": {
+            "n": -2e-100
+        }
+    },
+    {
+        "prompt": "Is 2e-100 even?",
+        "name": "fn_is_even",
+        "parameters": {
+            "n": 2e-100
+        }
+    }
+]

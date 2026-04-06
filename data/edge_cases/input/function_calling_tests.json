@@ -1,0 +1,6 @@
+[
+  { "prompt": "Is -2 even?" },
+  { "prompt": "Is -2e100 even?" },
+  { "prompt": "Is -2e-100 even?" },
+  { "prompt": "Is 2e-100 even?" }
+]

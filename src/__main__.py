@@ -89,16 +89,25 @@ def main() -> None:
                     field="func",
                     new_text=func_name
                 )
+
+                if not func_name:
+                    live.console.print(Panel.fit(
+                        "[bold red]Sem função para: "
+                        f"[/bold red]{p.prompt}",
+                        title="[bold white]Error[/bold white]"
+                    ))
+                    continue
+
                 # 3. Resolve function definition
                 func: FunctionDefinition | None = next(
                     (f for f in functions if f.name == func_name), None
                 )
 
                 if func is None:
-                    live.console.print(
+                    live.console.print(Panel.fit(
                         f"[bold red]Erro:[/bold red] Função "
                         f"'{func_name}' não encontrada."
-                    )
+                    ))
                     continue
 
                 # 4. Parameter generation

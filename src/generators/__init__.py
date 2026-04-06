@@ -1,4 +1,4 @@
-from .types import Boolean, String, Integer, Float
+from .types import Boolean, String, Numbers
 from .function_generator import FunctionGenerator
 from typing import TYPE_CHECKING, Any
 
@@ -12,9 +12,9 @@ class FunctionCaller:
         self.function_generator = FunctionGenerator()
 
         self.type_registry = {
-            "number": Float(),
-            "integer": Integer(),
-            "float": Float(),
+            "number": Numbers("float"),
+            "float": Numbers("float"),
+            "integer": Numbers("int"),
             "string": String(),
             "boolean": Boolean(),
         }

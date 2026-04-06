@@ -24,9 +24,14 @@ class FunctionGenerator:
         return (
             "<|im_start|>system\n"
             "You are a function selector.\n"
-            "Choose the best function based on the user prompt.\n"
+            "Only choose the best function based on the user prompt "
+            "if you can do the prompt wiht the function you choose.\n"
             "Return ONLY the function name.\n"
             "IMPORTANT RULES:\n"
+            "- 'negative', 'positive', 'prime', 'factorial', "
+            "'absolute' → fn_none\n"
+            "- fn_is_even ONLY for 'even' or 'odd' questions\n"
+            # "- If no function matches the prompt, return fn_none\n"
             "- Strings must not have newline in the midle\n"
             "- 'Calculate compound' means (principal * (1 + rate)^years) "
             "but not means product\n"
@@ -39,11 +44,39 @@ class FunctionGenerator:
             "<|im_start|>assistant\n"
         )
 
+    FUNCTION_WHITELIST = {
+        "fn_is_even": ["even", "odd"],
+        "fn_get_square_root": ["square root", "sqrt", "√"],
+        "fn_add_numbers": ["sum", "add", "plus", "addition", "total"],
+        "fn_reverse_string": ["reverse", "flip", "backwards"],
+        "fn_greet": ["greet", "hello", "hi", "hey"],
+        "fn_filter_list": ["filter", "list", "sort by", "order by"],
+    }
+
+    FUNCTION_BLACKLIST: dict = {}
+
+    def is_valid_match(self, func_name: str, prompt: str) -> bool:
+        prompt_lower = prompt.lower()
+
+        # Whitelist: função só é válida se prompt contém pelo menos uma palavra
+        whitelist = self.FUNCTION_WHITELIST.get(func_name, [])
+        if whitelist and not any(word in prompt_lower for word in whitelist):
+            return False
+
+        # Blacklist: função é inválida se prompt contém palavra bloqueada
+        blacklist = self.FUNCTION_BLACKLIST.get(func_name, [])
+        if any(word in prompt_lower for word in blacklist):
+            return False
+
+        return True
+
     def generate(
         self,
         llm: LLM_Model,
         funcs: list[FunctionDefinition],
-        prompt: str
+        prompt: str,
+        excluded=None,
+        max_retries=3
     ) -> str:
         """
         Generate the most appropriate function name for a given prompt.
@@ -70,14 +103,22 @@ class FunctionGenerator:
                 model cannot produce a valid continuation or confidence is
                 insufficient.
         """
+        if excluded is None:
+            excluded = set()
+        if len(excluded) >= max_retries:
+            return ""
         # List of valid function names (sorted for deterministic behavior)
-        f_names = sorted([f.name for f in funcs])
+        filtered_funcs = [f for f in funcs if f.name not in excluded]
+
+        f_names = sorted([f.name for f in filtered_funcs])
+        # f_names_with_none = sorted(f_names + ["fn_none"])
+        f_names_with_none = sorted(f_names)
 
         # All function names start with this prefix
         output = "fn_"
 
         # Build the instruction prompt for the LLM
-        instructions = self.get_func_instructions(funcs, prompt)
+        instructions = self.get_func_instructions(filtered_funcs, prompt)
 
         # Vocabulary: token string → token ID
         vocab: Any = load_vocab(llm)
@@ -90,31 +131,16 @@ class FunctionGenerator:
         # Logits for the initial prefix "fn_"
         input_ids, logits = encode_and_get_logits()
 
-        # --- Initial confidence check -------------------------------------
-        # Check if the model is confident about ANY valid next character.
-        # If not, the prompt likely doesn't match any function.
-        initial_scores = []
-        for f in f_names:
-            next_char = f[len("fn_")]  # first letter after "fn_"
-            for s, tid in vocab.items():
-                token_str = s[1:] if s.startswith("Ġ") else s
-                if token_str == next_char:
-                    initial_scores.append(logits[tid])
-
-        if not initial_scores or max(initial_scores) < len(funcs):
-            return ""
-
         # --- Main generation loop -----------------------------------------
         # Continue until the output exactly matches a function name.
-        while output not in f_names:
-
+        while output not in f_names_with_none:
             # Keep only names that still match the current prefix
-            ft_list = [f for f in f_names if f.startswith(output)]
+            ft_list = [f for f in f_names_with_none if f.startswith(output)]
 
             # Only one possible function → auto-complete
             if len(ft_list) == 1:
                 output += ft_list[0][len(output):]
-                return output
+                break
 
             # No possible function → invalid path
             if not ft_list:
@@ -127,7 +153,7 @@ class FunctionGenerator:
 
                 # Valid if it keeps the prefix matching some function
                 if token_str and any(
-                    f.startswith(output + token_str) for f in f_names
+                    f.startswith(output + token_str) for f in f_names_with_none
                 ):
                     valid_tokens.append((tid, token_str))
 
@@ -139,7 +165,6 @@ class FunctionGenerator:
             token_id, token_str = max(
                 valid_tokens, key=lambda x: logits[x[0]]
             )
-
             # Append token to the output
             output += token_str
 
@@ -147,4 +172,9 @@ class FunctionGenerator:
             input_ids, logits = encode_and_get_logits()
 
         # Completed valid function name
-        return output
+        if output == "fn_none":
+            return ""
+        # Se não é válido, retry excluindo esta função
+        if not self.is_valid_match(output, prompt):
+            return self.generate(llm, funcs, prompt, excluded | {output})
+        return "" if output == "fn_none" else output
