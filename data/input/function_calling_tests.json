@@ -1,12 +1,6 @@
 [
   {
-    "prompt": "Is -1 negative"
-  },
-  {
-    "prompt": "Filter the list by 'name' in ascending order"
-  },
-  {
-    "prompt": "Filter the list by 'age' and reverse it"
+    "prompt": "What is the sum of 2 and 3?"
   },
   {
     "prompt": "What is the sum of 265 and 345?"

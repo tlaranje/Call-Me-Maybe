@@ -1,8 +1,5 @@
 [
   {
-    "prompt": "Read the file at /home/user/data.json with utf-8 encoding"
-  },
-  {
     "prompt": "What is the product of 3 and 5?"
   },
   {
@@ -22,6 +19,9 @@
   },
   {
     "prompt": "Run the query 'INSERT INTO logs VALUES (1, 2, 3)' on the system database"
+  },
+  {
+    "prompt": "Read the file at /home/user/data.json with utf-8 encoding"
   },
   {
     "prompt": "Read C:\\Users\\john\\config.ini with latin-1 encoding"

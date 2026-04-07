@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from src.utils import load_vocab
 import math
 import re
@@ -26,7 +26,7 @@ class Numbers:
         """
         self.type = type
 
-    def extract_number_from_prompt(self, ins: str) -> float | None:
+    def check_sign(self, ins: str) -> float:
         """
         Extract the first numeric literal from the prompt.
 
@@ -48,7 +48,8 @@ class Numbers:
             r"([eE][+-]?\d+)?"  # optional exponent with optional sign
         )
         m = re.search(NUM_PATTERN, ins)
-        return float(m.group(0)) if m else None
+        assert m is not None
+        return -1 if m.group(0).startswith('-') else 1
 
     def _is_valid_extension(self, curr: str, tok: str) -> bool:
         """
@@ -90,54 +91,71 @@ class Numbers:
         except ValueError:
             return False
 
-    def generate(self, llm: LLM_Model, ins: str) -> int | float:
+    def generate(self, llm: LLM_Model, ins: str) -> int | float | str | Any:
         """
-        Generate a number using constrained decoding.
-
-        The LLM is queried token-by-token. Each token is accepted only if it
-        keeps the partial string a valid numeric prefix. The sign is inferred
-        from the number present in the original prompt.
+        Generates a numeric value based on LLM logits and regex constraints.
 
         Args:
-            llm (LLM_Model): The language model used for token generation.
-            ins (str): The instruction prompt.
+            llm: The language model instance.
+            ins: The input instruction string.
 
         Returns:
-            int | float: The generated numeric value.
+            The parsed numeric value (int or float) or None if invalid.
         """
-        # Determine the sign from the prompt's original number
-        prompt_value = self.extract_number_from_prompt(ins)
-        sign = -1 if (prompt_value is not None and prompt_value < 0) else 1
+        regex: str = '-0123456789.e\n'
+        is_sci_notation: bool = False
+        curr_value: Any = ""
+        curr_token: str = ""
+        sign: int = 1
 
-        curr_value = ""
-        curr_token = ""
+        # Initial encoding and logit extraction
+        input_ids: list[int] = llm.encode(ins + curr_value).tolist()[0]
+        logits: Any = llm.get_logits_from_input_ids(input_ids)
+        vocab: dict[str, int] = load_vocab(llm)
 
-        # Initial logits
-        input_ids = llm.encode(ins).tolist()[0]
-        logits = llm.get_logits_from_input_ids(input_ids)
-        vocab = load_vocab(llm)
+        while curr_token != 'Ċ':
+            # Get the token with the highest probability
+            curr_token = max(vocab.keys(), key=lambda s: logits[vocab[s]])
 
-        # Constrained decoding loop
-        while curr_token != "Ċ":
-            # Greedy token selection
-            curr_token = max(vocab, key=lambda s: logits[vocab[s]])
+            # Check if the first token indicates a negative sign
+            if curr_value == "" and '-' in curr_token:
+                sign = -1
 
-            # Accept token if it keeps the number valid
-            if self._is_valid_extension(curr_value, curr_token):
-                curr_value += curr_token
-                input_ids = llm.encode(ins + curr_value).tolist()[0]
-                logits = llm.get_logits_from_input_ids(input_ids)
-            else:
-                # Permanently ban invalid token
+            # Flag if the token is scientific notation 'e'
+            if curr_token == 'e':
+                is_sci_notation = True
+
+            # Combined validation: if any of these are true, reject the token
+            is_invalid = (
+                (curr_token == '-' and not curr_value.endswith('e')) or
+                (is_sci_notation and curr_token == '.') or
+                (curr_token not in regex) or
+                (curr_value.count('.') >= 2)
+            )
+
+            if is_invalid:
                 logits[vocab[curr_token]] = -math.inf
+                continue
 
-        # Convert final string to number
-        s = curr_value.lower()
+            # Append valid token and refresh logits for the next step
+            curr_value += curr_token
+            input_ids = llm.encode(ins + curr_value).tolist()[0]
+            logits = llm.get_logits_from_input_ids(input_ids)
 
-        if self.type == "int":
-            if "e" in s:
-                base, exp = s.split("e")
-                return sign * (int(float(base)) * (10 ** int(exp)))
-            return sign * int(float(s))
+        # Final logic for parsing the collected string into a number
+        try:
+            if is_sci_notation:
+                return sign * float(curr_value)
 
-        return sign * float(s)
+            dots: int = curr_value.count('.')
+
+            if self.type == "float":
+                return sign * float(curr_value)
+
+            if self.type == "int" and dots == 0:
+                return sign * int(curr_value)
+
+        except (ValueError, TypeError, OverflowError):
+            return None
+
+        return None

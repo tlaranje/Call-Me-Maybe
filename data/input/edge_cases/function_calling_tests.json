@@ -1,0 +1,14 @@
+[
+  { "prompt": "Add 3.5 and 2 together." },
+  { "prompt": "Multiply 10 by 5.5." },
+  { "prompt": "Add 2e308 and 2e100 together?" },
+  { "prompt": "Calculate 1e-324 + 0." },
+  { "prompt": "Add -1.5 and -100 together." },
+  { "prompt": "Subtract -0 from 5." },
+  { "prompt": "Add 1.1.1 and 2." },
+  { "prompt": "Subtract .5 from 1." },
+  { "prompt": "Add 12345678901234567890 and 1." },
+  { "prompt": "What is 999999999999999999 times 2?" },
+  { "prompt": "What is the capital of France?" },
+  { "prompt": "Write a poem about artificial intelligence." }
+]

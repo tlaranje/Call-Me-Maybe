@@ -81,7 +81,7 @@ class FunctionCaller:
         return (
             "<|im_start|>system\n"
             "Select the arguments for the following function "
-            "according to the user's prompt, followed by a \\n character. "
+            "according to the user's prompt.\n"
             f"{str(func)} <|im_end|>\n"
             "<|im_start|>user\n"
             f"{prompt}\n"
