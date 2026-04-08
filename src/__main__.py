@@ -1,162 +1,122 @@
-from src.models import load_and_validate, FunctionDefinition
-from src.utils import animate_field, render_panel
-from src.generators import FunctionCaller
-from src.parse_args import parse_args
-
-from rich.console import Console
-from rich.panel import Panel
-from rich.live import Live
-from rich import print
-
-from pydantic import ValidationError
-from llm_sdk import Small_LLM_Model
-from typing import Any
 import json
 import os
+from typing import Any
+
+from llm_sdk import Small_LLM_Model
+from pydantic import ValidationError
+from rich import print
+from rich.console import Console
+from rich.live import Live
+from rich.panel import Panel
+
+from src.generators import FunctionCaller
+from src.models import load_and_validate
+from src.parse_args import parse_args
+from src.utils import animate_field, render_panel
 
 
 def write_results(file: str, res: list[dict[str, Any]]) -> None:
     """
-    Write results to a JSON file.
-
-    Ensures the output directory exists and saves the results
-    with indentation for readability.
+    Writes results to a JSON file.
 
     Args:
         file (str): Path to the output JSON file.
         res (list[dict[str, Any]]): List of results.
-
-    Returns:
-        None
     """
-    # Ensure output directory exists
-    os.makedirs("data/output", exist_ok=True)
+    output_dir = os.path.dirname(file) or "data/output"
+    os.makedirs(output_dir, exist_ok=True)
 
-    # Write formatted JSON
-    with open(file, "w") as fd:
-        fd.write(json.dumps(res, indent=4))
+    with open(file, "w", encoding="utf-8") as fd:
+        json.dump(res, fd, indent=4, ensure_ascii=False)
 
 
 def main() -> None:
     """
     Entry point for the function-calling pipeline.
 
-    This function orchestrates the full workflow:
-    - Loads and validates input data
-    - Generates function names using the LLM
-    - Generates parameters for each function
-    - Streams progress to the terminal using Rich
-    - Saves results incrementally to a JSON file
-
-    Args:
-        None
-
-    Returns:
-        None
+    Orchestrates loading, generation via LLM, and real-time UI updates.
     """
-    # Accumulates all results across prompts
     final_json: list[dict[str, Any]] = []
 
     try:
-        # Initialize model and load input data
         llm = Small_LLM_Model()
         args = parse_args()
         data = load_and_validate(args)
-
-        print()
-        print(
-            "[bold blue]=== Generating functions "
-            "names and parameters ===[/bold blue]\n"
-        )
-
         functions = data['functions']
         console = Console()
 
-        # Live UI for streaming updates (animation)
+        print("\n[bold blue]=== Generating functions ===[/bold blue]\n")
+
         with Live(console=console, refresh_per_second=20) as live:
             for p in data['prompts']:
                 caller = FunctionCaller()
 
-                # 2. Function selection
+                # 1. Name generation
                 func_name = caller.function_generator.generate(
                     llm, functions, p.prompt
                 )
                 animate_field(
-                    live,
-                    p.prompt,
-                    func_name,
-                    params=None,
-                    field="func",
-                    new_text=func_name
+                    live, p.prompt, func_name, field="func", new_text=func_name
                 )
 
                 if not func_name:
                     live.console.print(Panel.fit(
-                        "[bold red]Sem função para: "
-                        f"[/bold red]{p.prompt}",
-                        title="[bold white]Error[/bold white]"
+                        f"[bold red]No function for:[/bold red] {p.prompt}",
+                        title="Error"
                     ))
                     continue
 
-                # 3. Resolve function definition
-                func: FunctionDefinition | None = next(
+                # 2. Definition lookup
+                func = next(
                     (f for f in functions if f.name == func_name), None
                 )
 
                 if func is None:
                     live.console.print(Panel.fit(
-                        f"[bold red]Erro:[/bold red] Função "
-                        f"'{func_name}' não encontrada."
+                        f"[bold red]Error:[/bold red] '{func_name}' not found."
                     ))
                     continue
 
-                # 4. Parameter generation
-
-                params: dict[str, Any] = {}
-
+                # 3. Parameter generation
+                params = {}
                 if func.parameters:
                     params = caller.generate_parameters(llm, func, p.prompt)
-                params_text = json.dumps(params, ensure_ascii=False)
+
+                is_valid = not any(v is None for v in params.values())
+                params_text = (
+                    str(params) if is_valid else "[bold red]Invalid "
+                    "Value[/bold red]"
+                )
+
                 animate_field(
                     live,
                     prompt=p.prompt,
                     func_name=func_name,
-                    params={},
                     field="params",
-                    new_text=params_text
+                    new_text=params_text,
+                    animate=is_valid
                 )
 
-                # 5. Save and write result
-                final_json.append({
-                    "prompt": p.prompt,
-                    "name": func_name,
-                    "parameters": params
-                })
+                # 4. Save results
+                if is_valid:
+                    final_json.append({
+                        "prompt": p.prompt,
+                        "name": func_name,
+                        "parameters": params
+                    })
+                    write_results(args['output'], final_json)
 
-                write_results(args['output'], final_json)
-
-                # Print stable result below animated panel
                 live.update("")
                 live.console.print(
                     render_panel(p.prompt, func_name, params_text)
                 )
-    except ValidationError as e:
-        # Handle structured validation errors
-        for error in e.errors():
-            msg = error['msg'].removeprefix("Value error, ")
-            print(Panel(
-                f"[bold red]{msg}[/bold red]",
-                title="[bold white]Validation Error[/bold white]"
-            ))
-        exit()
 
+    except ValidationError as e:
+        for error in e.errors():
+            msg = error['msg'].replace("Value error, ", "")
+            print(Panel(f"[bold red]{msg}[/bold red]", title="Validation"))
     except Exception as e:
-        # Catch-all for unexpected runtime errors
-        print(Panel.fit(
-            f"[bold red]{e}[/bold red]",
-            title="[bold white]Error[/bold white]"
-        ))
-        exit()
+        print(Panel.fit(f"[bold red]{e}[/bold red]", title="Error"))
 
 
 if __name__ == "__main__":

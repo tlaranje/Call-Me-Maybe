@@ -1,40 +1,43 @@
-from pydantic import BaseModel, model_validator
 from typing import Any
+from pydantic import BaseModel, model_validator
 
 
 class Prompt(BaseModel):
     """
-    Represent a single user prompt.
+    Represents a single user prompt input.
 
-    Args:
-        prompt (str): Natural language input.
+    Attributes:
+        prompt (str): The natural language input from the user.
     """
+
     prompt: str
 
     @model_validator(mode='before')
     @classmethod
     def check_fields(cls, values: Any) -> Any:
         """
-        Validate prompt structure.
+        Validates the prompt structure before initialization.
 
         Args:
-            values (Any): Raw input data.
+            values (Any): Raw input data to be validated.
 
         Returns:
-            Any: Validated values.
+            Any: The validated input data.
 
         Raises:
-            ValueError: If validation fails.
+            ValueError: If the 'prompt' field is missing or not a string.
         """
-        errors = []
+        if not isinstance(values, dict):
+            return values
 
-        if values.get('prompt') is None:
+        errors = []
+        prompt_value = values.get('prompt')
+
+        if prompt_value is None:
             errors.append("'prompt' field is missing.")
-        elif not isinstance(values.get('prompt'), str):
-            errors.append(
-                "'prompt' must be a string, got "
-                f"{type(values.get('prompt')).__name__}"
-            )
+        elif not isinstance(prompt_value, str):
+            got_type = type(prompt_value).__name__
+            errors.append(f"'prompt' must be a string, got {got_type}")
 
         if errors:
             raise ValueError("\n    ".join(errors))

@@ -1,17 +1,31 @@
-from .types import Boolean, String, Numbers
 from .function_generator import FunctionGenerator
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
+from .types import Boolean, Numbers, String
 
 if TYPE_CHECKING:
     from llm_sdk import Small_LLM_Model as LLM_Model
     from src.models import FunctionDefinition
 
 
+class GeneratorProtocol(Protocol):
+    """Protocol defining the interface for all type generators."""
+    def generate(self, llm: "LLM_Model", ins: str) -> Any:
+        ...
+
+
 class FunctionCaller:
-    def __init__(self):
+    """
+    Orchestrates the extraction of parameters for a selected function.
+    """
+
+    def __init__(self) -> None:
+        """
+        Initializes the caller and registers generators for each type.
+        """
         self.function_generator = FunctionGenerator()
 
-        self.type_registry = {
+        # Mapping types to their respective generator classes
+        self.type_registry: dict[str, GeneratorProtocol] = {
             "number": Numbers("float"),
             "float": Numbers("float"),
             "integer": Numbers("int"),
@@ -21,68 +35,76 @@ class FunctionCaller:
 
     def generate_parameters(
         self,
-        model: LLM_Model,
-        func: FunctionDefinition,
+        model: "LLM_Model",
+        func: "FunctionDefinition",
         prompt: str
     ) -> dict[str, Any]:
         """
-        Generate all parameters for a selected function.
-
-        Iterates through each parameter definition and generates values
-        using type-specific generators, with optional live UI updates.
+        Generates all parameters for a selected function using the LLM.
 
         Args:
-            model (LLM_Model): Language model used for generation.
-            func (FuncDef): Function definition.
-            prompt (str): User input prompt.
-            instructions (str): Base instruction string.
-            live (optional): Rich Live instance for UI updates.
+            model (LLM_Model): The language model instance.
+            func (FunctionDefinition): The definition of the target function.
+            prompt (str): The user's input message.
 
         Returns:
-            dict[str, Any]: Dictionary with generated parameters.
+            dict[str, Any]: A dictionary containing the generated parameters.
+
+        Raises:
+            ValueError: If a parameter type is not supported by the registry.
         """
         res: dict[str, Any] = {}
-
         instructions = self.get_params_instructions(func, prompt)
+
         for param_name, param in func.parameters.items():
-            # Append parameter prefix to instruction
-            instructions += f"{param_name}="
+            # Apply specific syntax based on parameter type
+            if param.type == "string":
+                instructions += f'{param_name}='
+            else:
+                instructions += f'{param_name}->'
 
             generator = self.type_registry.get(param.type)
 
             if generator is None:
                 raise ValueError(
-                    f"No generator registered for type '{param.type}' "
-                    f"(parameter '{param_name}' of '{func.name}')"
+                    f"No generator found for type '{param.type}' "
+                    f"(param: '{param_name}' in function: '{func.name}')"
                 )
 
-            # Generate value using appropriate generator
+            # Generate value and store it
             value = generator.generate(model, instructions)
             res[param_name] = value
 
-            # Append generated value to instruction context
+            # Update instructions with the new value for the next parameter
             instructions += f"{str(value)}\n"
 
         return res
 
     def get_params_instructions(
-        self, func: FunctionDefinition, prompt: str
+        self,
+        func: "FunctionDefinition",
+        prompt: str
     ) -> str:
         """
-        Build the base instruction prompt for parameter extraction.
+        Builds the instruction prompt for parameter extraction.
 
         Args:
-            func (FuncDef): Function definition containing parameter schema.
-            prompt (str): User's natural language input.
+            func (FunctionDefinition): Function schema and descriptions.
+            prompt (str): The user's natural language input.
 
         Returns:
-            str: Formatted instruction string for the LLM.
+            str: The formatted system and user prompt.
         """
         return (
             "<|im_start|>system\n"
-            "Select the arguments for the following function "
-            "according to the user's prompt.\n"
+            "Extract parameter values VERBATIM from the user message.\n"
             f"{str(func)} <|im_end|>\n"
+            "<|im_start|>user\n"
+            "Format template: Hello {user}'s profile!\n"
+            "<|im_end|>\n"
+            "<|im_start|>assistant\n"
+            "template=Hello {user}'s profile!\n"
+            "<|im_end|>\n"
             "<|im_start|>user\n"
             f"{prompt}\n"
             "<|im_end|>\n"

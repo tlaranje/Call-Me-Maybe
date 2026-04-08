@@ -19,7 +19,7 @@ dependencies = [
 
 [tool.mypy]
 files = ["src", "tests"]
-exclude = "build|dist|.venv|site-packages"
+exclude = "build|dist|.venv|site-packagess"
 ignore_missing_imports = true
 cache_dir = ".mypy_cache"
 
@@ -35,10 +35,6 @@ module = [
 ignore_errors = true
 ignore_missing_imports = true
 follow_imports = "skip"
-
-[[tool.mypy.overrides]]
-module = "src.llm_utils"
-ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "uvcache.*"

@@ -1,17 +1,19 @@
-from pydantic import BaseModel, model_validator
 from typing import Any
+from pydantic import BaseModel, model_validator
+
 from .function_parameter import FunctionParameter
 
 
 class FunctionDefinition(BaseModel):
     """
-    Represent a function definition.
+    Represents a complete function definition for the LLM pipeline.
 
-    Args:
-        name (str): Function name.
-        description (str): Human-readable description.
-        parameters (dict[str, FunctionParameter]): Function parameters.
-        returns (FunctionParameter): Return type definition.
+    Attributes:
+        name (str): The unique identifier for the function.
+        description (str): A detailed explanation of what the function does.
+        parameters (dict[str, FunctionParameter]): A mapping of parameter names
+            to their respective type definitions.
+        returns (FunctionParameter): The definition of the return type.
     """
     name: str
     description: str
@@ -22,61 +24,52 @@ class FunctionDefinition(BaseModel):
     @classmethod
     def check_fields(cls, values: Any) -> Any:
         """
-        Perform custom validation before model parsing.
-
-        Ensures required fields exist and have the correct structure.
+        Validates the function structure before parsing into Pydantic models.
 
         Args:
-            values (Any): Raw input data.
+            values (Any): The raw data dictionary to validate.
 
         Returns:
-            Any: Validated values.
+            Any: The validated values.
 
         Raises:
-            ValueError: If validation fails.
+            ValueError: If required fields are missing or have incorrect types.
         """
+        if not isinstance(values, dict):
+            return values
+
         errors = []
 
-        # Validate name
-        if values.get('name') is None:
-            errors.append("'name' field is missing.")
-        elif not isinstance(values.get('name'), str):
-            errors.append(
-                "'name' must be a string, got "
-                f"{type(values.get('name')).__name__}."
-            )
+        # Validate basic string fields
+        for field in ["name", "description"]:
+            val = values.get(field)
+            if val is None:
+                errors.append(f"'{field}' field is missing.")
+            elif not isinstance(val, str):
+                got = type(val).__name__
+                errors.append(f"'{field}' must be a string, got {got}.")
 
-        # Validate description
-        if values.get('description') is None:
-            errors.append("'description' field is missing.")
-        elif not isinstance(values.get('description'), str):
-            errors.append(
-                "'description' must be a string, got "
-                f"{type(values.get('description')).__name__}."
-            )
-
-        # Validate parameters
-        if values.get('parameters') is None:
+        # Validate parameters dictionary
+        params = values.get('parameters')
+        if params is None:
             errors.append("'parameters' field is missing.")
-        else:
-            for key, value in values.get('parameters').items():
-                if 'type' not in value:
+        elif isinstance(params, dict):
+            for key, val in params.items():
+                if not isinstance(val, dict) or 'type' not in val:
+                    errors.append(f"parameter '{key}' must have a 'type'.")
+                elif not isinstance(val['type'], str):
+                    got = type(val['type']).__name__
                     errors.append(
-                        f"parameter '{key}' must have a 'type' field."
-                    )
-                elif not isinstance(value['type'], str):
-                    errors.append(
-                        f"parameter '{key}' 'type' must be a string, got "
-                        f"{type(value['type']).__name__}."
+                        f"parameter '{key}' type must be string, got {got}."
                     )
 
-        # Validate returns
-        if values.get('returns') is None:
+        # Validate returns field
+        ret = values.get('returns')
+        if ret is None:
             errors.append("'returns' field is missing.")
-        elif 'type' not in values.get('returns'):
+        elif not isinstance(ret, dict) or 'type' not in ret:
             errors.append("'returns' must have a 'type' field.")
 
-        # Raise aggregated errors
         if errors:
             raise ValueError("\n    ".join(errors))
 
