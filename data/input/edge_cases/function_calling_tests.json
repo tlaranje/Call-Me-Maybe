@@ -1,0 +1,13 @@
+[
+    { "prompt": "What is 15 times 42?" },
+    { "prompt": "Say hello to Nuno." },
+    { "prompt": "Translate 'Good morning' to French." },
+    { "prompt": "Replace 'a' with 'o' in the sentence 'banana' using regex." },
+    { "prompt": "What is the sum of 2 and 3?" },
+    { "prompt": "Is the number 87 even?" },
+    { "prompt": "What is the square root of 144?" },
+    { "prompt": "Read the file 'data.txt' using utf-8 encoding." },
+    { "prompt": "Calculate the compound interest for a principal of 1000 at a rate of 0.05 for 3 years." },
+    { "prompt": "Reverse the word 'Pneumonoultramicroscopicsilicovolcanoconiosis'." },
+    { "prompt": "Is the sky blue?" }
+]

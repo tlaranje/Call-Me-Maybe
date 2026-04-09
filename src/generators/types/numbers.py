@@ -56,7 +56,7 @@ class Numbers:
         except ValueError:
             return False
 
-    def generate(self, llm: "LLM_Model", ins: str) -> Any:
+    def generate(self, llm: "LLM_Model", ins: str, prompt: str = "") -> Any:
         """
         Generates a numeric value based on LLM logits and constraints.
 

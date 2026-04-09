@@ -51,6 +51,13 @@ def main() -> None:
             for p in data['prompts']:
                 caller = FunctionCaller()
 
+                if p.prompt == "":
+                    live.console.print(Panel.fit(
+                        "[bold red] Prompt cannot be empty [/bold red]",
+                        title="Error"
+                    ))
+                    continue
+
                 # 1. Name generation
                 func_name = caller.function_generator.generate(
                     llm, functions, p.prompt

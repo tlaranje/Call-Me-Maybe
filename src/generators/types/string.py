@@ -10,7 +10,7 @@ class String:
     Generator for string-type parameters using the LLM.
     """
 
-    def generate(self, llm: "LLM_Model", ins: str) -> str:
+    def generate(self, llm: "LLM_Model", ins: str, prompt: str = "") -> str:
         """
         Generates a string value token by token until a stop sequence is met.
 
