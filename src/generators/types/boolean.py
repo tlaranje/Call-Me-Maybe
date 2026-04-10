@@ -12,7 +12,7 @@ class Boolean:
     Generator for boolean-type parameters using constrained token selection.
     """
 
-    def generate(self, llm: "LLM_Model", ins: str, prompt: str = "") -> bool:
+    def generate(self, llm: "LLM_Model", ins: str) -> bool:
         """
         Generates a boolean value by masking logits for 'true' and 'false'.
 

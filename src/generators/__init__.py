@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 class GeneratorProtocol(Protocol):
     """Protocol defining the interface for all type generators."""
-    def generate(self, llm: "LLM_Model", ins: str, prompt: str = "") -> Any:
+    def generate(self, llm: "LLM_Model", ins: str) -> Any:
         ...
 
 
@@ -72,7 +72,7 @@ class FunctionCaller:
                 )
 
             # Generate value and store it
-            value = generator.generate(model, instructions, prompt)
+            value = generator.generate(model, instructions)
             res[param_name] = value
 
             # Update instructions with the new value for the next parameter

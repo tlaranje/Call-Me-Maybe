@@ -66,7 +66,7 @@ def main() -> None:
                     live, p.prompt, func_name, field="func", new_text=func_name
                 )
 
-                if not func_name:
+                if not func_name or func_name == "fn_none":
                     live.console.print(Panel.fit(
                         f"[bold red]No function for:[/bold red] {p.prompt}",
                         title="Error"
