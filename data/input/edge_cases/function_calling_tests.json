@@ -1,3 +1,43 @@
 [
-  { "prompt": "Replace 'a' with 'o' in the sentence 'banana' using regex." }
+  { "prompt": "Sort the list in alphabetical order." },
+  { "prompt": "Convert 100 dollars to euros." },
+  { "prompt": "Generate a random UUID." },
+  { "prompt": "Who wrote the book '1984'?" },
+  { "prompt": "Send an email to john@example.com" },
+  { "prompt": "What is the capital of Portugal?" },
+
+  { "prompt": "What is 7 times 8?" },
+  { "prompt": "Multiply 0.5 by 200" },
+  { "prompt": "Compute the total of 99 and 1." },
+  { "prompt": "Is 42 divisible by 2?" },
+  { "prompt": "What is the square of 9?" },
+  { "prompt": "Raise 2 to the power of 10." },
+  { "prompt": "How much is the square root of 256?" },
+  { "prompt": "Run the query 'SELECT id, name FROM orders' against the warehouse database." },
+  { "prompt": "Tell me how many tables are in the database." },
+  { "prompt": "Read the file at https://example.com/data.csv with utf-8 encoding." },
+  { "prompt": "Reverse the string 'abc123'" },
+  { "prompt": "Format template: Welcome, {username}! Your score is {score}." },
+  { "prompt": "Replace all digits in 'Order #4521 - Item #9' with the letter X" },
+  { "prompt": "Substitute every whitespace character in 'hello world foo' with an underscore" },
+
+  { "prompt": "Filter the list by the key 'price' in descending order." },
+  { "prompt": "Filter list by 'created_at', reversed." },
+  { "prompt": "Filter by the key 'name' without reversing." },
+  { "prompt": "Filter the list by 'status', do not reverse the results." },
+
+  { "prompt": "Is 0 an even number?" },
+  { "prompt": "Check if -7 is even." },
+  { "prompt": "Is 1000000 even?" },
+  { "prompt": "Calculate compound interest on 5000 at 0.05 rate for 10 years." },
+  { "prompt": "What is the compound interest for a principal of 250000, a rate of 0.03, over 30 years?" },
+
+  { "prompt": "Calculate compound interest on 1500.75 at 0.0425 rate for 5 years." },
+  { "prompt": "What is the square root of 2?" },
+  { "prompt": "Get the square root of 0.0001" },
+  { "prompt": "Add 3.14159 and 2.71828" },
+  { "prompt": "Multiply 1.5 by 0.333" },
+
+  { "prompt": "Filter my results using key 'relevance', reversed order." },
+  { "prompt": "Apply filter with key 'date' and keep the original order." }
 ]

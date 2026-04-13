@@ -44,6 +44,19 @@ class FunctionGenerator:
             "2. NEVER use 'fn_execute_sql_query' unless keywords like "
             "'SELECT', 'INSERT', 'UPDATE' or 'DATABASE' are present.\n"
             "3. If no function matches the intent exactly, return 'fn_none'.\n"
+            "4. NEVER use 'fn_greet' unless the prompt explicitly asks to "
+            "greet or say hello to a person.\n"
+            "5. NEVER use any function if the prompt asks for something "
+            "none of the functions can do.\n"
+            "6. NEVER use 'fn_get_square_root' unless the prompt explicitly "
+            "mentions 'square root', 'sqrt', 'square root of', or "
+            "'raiz quadrada'. The word 'square' alone does NOT trigger "
+            "this function.\n"
+            "7. NEVER use 'fn_execute_sql_query' for mathematical "
+            "expressions like '^', 'power', or 'exponent'.\n"
+            "8. NEVER use 'fn_calculate_compound_interest' unless the prompt "
+            "explicitly mentions 'interest', 'rate', "
+            "'principal', or 'compound'.\n"
             f"Available Functions:\n{func_descriptions}\n"
             "<|im_end|>\n"
             f"<|im_start|>user\n{prompt}\n<|im_end|>\n"
@@ -134,7 +147,16 @@ class FunctionGenerator:
         filtered_funcs = self.filter_functions(funcs, prompt)
 
         if not filtered_funcs:
-            return "fn_none"
+            p_lower = prompt.lower()
+            sql_kw = {"select", "insert", "update", "delete", "database"}
+            interest_kw = {"interest", "rate", "principal", "compound"}
+            filtered_funcs = [
+                f for f in funcs
+                if (f.name != "fn_execute_sql_query"
+                    or any(kw in p_lower for kw in sql_kw))
+                and (f.name != "fn_calculate_compound_interest"
+                     or any(kw in p_lower for kw in interest_kw))
+            ]
 
         # List of valid candidate strings
         f_names = sorted(list({f.name for f in filtered_funcs} | {"fn_none"}))

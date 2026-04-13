@@ -86,6 +86,8 @@ class String:
 
             iterations += 1
 
+        curr_value = curr_value.rstrip(", ")
+
         # Final string cleaning and quote removal
         result = curr_value.strip()
         if (
@@ -94,5 +96,4 @@ class String:
             and result.endswith(quote_char)
         ):
             result = result[1:-1]
-
         return result.strip()
